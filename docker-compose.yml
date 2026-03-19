@@ -3,12 +3,12 @@ version: '3.8'
 services:
   discovery:
     build:
-      context: ./Backendspring/services/discovery
+      context: ./backend/services/discovery
     restart: unless-stopped
 
   auth-service:
     build:
-      context: ./Backendspring/services/auth-service
+      context: ./backend/services/auth-service
     environment:
       - EUREKA_URL=http://discovery:8761/eureka/
       - MYSQL_HOST=mysql
@@ -21,7 +21,7 @@ services:
 
   project-service:
     build:
-      context: ./Backendspring/services/project-service
+      context: ./backend/services/project-service
     environment:
       - EUREKA_URL=http://discovery:8761/eureka/
       - MONGODB_HOST=mongodb
@@ -34,7 +34,7 @@ services:
   backend:
     # Spring API gateway (exposed to the frontend container)
     build:
-      context: ./Backendspring/services/gateway
+      context: ./backend/services/gateway
     environment:
       - EUREKA_URL=http://discovery:8761/eureka/
     depends_on:
