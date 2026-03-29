@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { User, Mail, GraduationCap, Award, FolderKanban, Building2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 function StudentProfile() {
   const { userEmail } = useAuth();
@@ -41,7 +42,9 @@ function StudentProfile() {
               ID: {currentUser.idUniversitaire}
             </div>
           </div>
-          <Button variant="outline" size="sm">Modifier</Button>
+          <Link to="/profile/edit">
+            <Button variant="outline" size="sm">Modifier</Button>
+          </Link>
         </div>
       </div>
 

@@ -1,11 +1,16 @@
-import { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/DashboardLayout';
-import { useQuery } from '@tanstack/react-query';
-import { fetchNotifications } from '@/lib/api';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  fetchNotifications,
+  markNotificationAsRead,
+  markAllNotificationsAsRead,
+  deleteNotification
+} from '@/lib/api';
 import { Notification } from '@/lib/types';
 import { Bell, CheckCheck, Trash2, ListTodo, FolderKanban, CalendarDays, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 const typeIcons = {
   task: ListTodo,
@@ -22,23 +27,60 @@ const typeColors = {
 };
 
 export default function NotificationsPage() {
-  const { data: fetchedNotifications = [], isLoading } = useQuery<Notification[]>({ queryKey: ['notifications'], queryFn: fetchNotifications });
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    if (fetchedNotifications.length > 0) {
-      setNotifications(fetchedNotifications);
+  const { data: notifications = [], isLoading } = useQuery<Notification[]>({
+    queryKey: ['notifications'],
+    queryFn: fetchNotifications
+  });
+
+  const markAsReadMutation = useMutation({
+    mutationFn: (id: string) => markNotificationAsRead(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['unreadCount'] });
+    },
+    onError: () => {
+      toast.error('Erreur lors du marquage de la notification');
     }
-  }, [fetchedNotifications]);
+  });
+
+  const markAllReadMutation = useMutation({
+    mutationFn: () => markAllNotificationsAsRead(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['unreadCount'] });
+      toast.success('Toutes les notifications ont été marquées comme lues');
+    },
+    onError: () => {
+      toast.error('Erreur lors du marquage des notifications');
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteNotification(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['unreadCount'] });
+      toast.success('Notification supprimée');
+    },
+    onError: () => {
+      toast.error('Erreur lors de la suppression');
+    }
+  });
 
   const markAsRead = (id: string) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, lu: true } : n));
+    markAsReadMutation.mutate(id);
   };
+
   const markAllRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, lu: true })));
+    markAllReadMutation.mutate();
   };
+
   const deleteNotif = (id: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
+    if (confirm('Êtes-vous sûr de vouloir supprimer cette notification ?')) {
+      deleteMutation.mutate(id);
+    }
   };
 
   return (

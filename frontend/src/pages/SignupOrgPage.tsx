@@ -14,10 +14,14 @@ export default function SignupOrgPage() {
   const { signUpOrganization } = useAuth();
   const navigate = useNavigate();
 
-  // Minimal fields required for Spring auth-service registration
+  // All fields for registration
   const [clubName, setClubName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [organizationType, setOrganizationType] = useState("");
+  const [responsableNom, setResponsableNom] = useState("");
+  const [responsableEmail, setResponsableEmail] = useState("");
+  const [responsableTelephone, setResponsableTelephone] = useState("");
 
   const addSponsor = () => setSponsors([...sponsors, { nom: '', logo: '', lien: '' }]);
   const removeSponsor = (i: number) => setSponsors(sponsors.filter((_, idx) => idx !== i));
@@ -33,6 +37,11 @@ export default function SignupOrgPage() {
       email,
       password,
       name: clubName,
+      organizationType,
+      responsableNom,
+      responsableEmail,
+      responsableTelephone,
+      sponsors: sponsors.map(s => s.nom),
     });
     navigate('/dashboard');
   };
@@ -58,7 +67,7 @@ export default function SignupOrgPage() {
           </div>
           <div className="space-y-2">
             <Label>Type</Label>
-            <Select>
+            <Select value={organizationType} onValueChange={setOrganizationType}>
               <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="Club">Club</SelectItem>
@@ -89,9 +98,9 @@ export default function SignupOrgPage() {
           <div className="p-4 rounded-xl bg-muted/50 space-y-3">
             <Label className="text-sm font-semibold">Infos du responsable</Label>
             <div className="space-y-2">
-              <Input placeholder="Nom du responsable" />
-              <Input type="email" placeholder="Email" />
-              <Input type="tel" placeholder="Téléphone" />
+              <Input placeholder="Nom du responsable" value={responsableNom} onChange={(e) => setResponsableNom(e.target.value)} />
+              <Input type="email" placeholder="Email" value={responsableEmail} onChange={(e) => setResponsableEmail(e.target.value)} />
+              <Input type="tel" placeholder="Téléphone" value={responsableTelephone} onChange={(e) => setResponsableTelephone(e.target.value)} />
             </div>
           </div>
 

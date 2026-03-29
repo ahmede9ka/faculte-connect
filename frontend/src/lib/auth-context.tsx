@@ -9,10 +9,33 @@ interface AuthState {
   token: string | null;
 }
 
+interface SignUpStudentPayload {
+  email: string;
+  password: string;
+  name: string;
+  faculte?: string;
+  specialite?: string;
+  idUniversitaire?: string;
+  competences?: string[];
+  avatar?: string;
+}
+
+interface SignUpOrganizationPayload {
+  email: string;
+  password: string;
+  name: string;
+  organizationType?: string;
+  responsableNom?: string;
+  responsableEmail?: string;
+  responsableTelephone?: string;
+  sponsors?: string[];
+  logo?: string;
+}
+
 interface AuthContextType extends AuthState {
   signIn: (email: string, password: string) => Promise<void>;
-  signUpStudent: (payload: { email: string; password: string; name: string }) => Promise<void>;
-  signUpOrganization: (payload: { email: string; password: string; name: string }) => Promise<void>;
+  signUpStudent: (payload: SignUpStudentPayload) => Promise<void>;
+  signUpOrganization: (payload: SignUpOrganizationPayload) => Promise<void>;
   logout: () => void;
 }
 
@@ -115,7 +138,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const signUpStudent = async (payload: { email: string; password: string; name: string }) => {
+  const signUpStudent = async (payload: SignUpStudentPayload) => {
     const res = await fetch("/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -124,6 +147,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         password: payload.password,
         name: payload.name,
         role: "INDIVIDU",
+        faculte: payload.faculte,
+        specialite: payload.specialite,
+        idUniversitaire: payload.idUniversitaire,
+        competences: payload.competences,
+        avatar: payload.avatar,
       }),
     });
     if (!res.ok) throw new Error("Signup failed");
@@ -132,7 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await signIn(payload.email, payload.password);
   };
 
-  const signUpOrganization = async (payload: { email: string; password: string; name: string }) => {
+  const signUpOrganization = async (payload: SignUpOrganizationPayload) => {
     const res = await fetch("/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -141,6 +169,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         password: payload.password,
         name: payload.name,
         role: "ORGANISATION",
+        organizationType: payload.organizationType,
+        responsableNom: payload.responsableNom,
+        responsableEmail: payload.responsableEmail,
+        responsableTelephone: payload.responsableTelephone,
+        sponsors: payload.sponsors,
+        logo: payload.logo,
       }),
     });
     if (!res.ok) throw new Error("Signup failed");

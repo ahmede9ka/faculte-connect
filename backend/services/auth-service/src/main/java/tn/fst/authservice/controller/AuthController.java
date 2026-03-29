@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.*;
 import tn.fst.authservice.dto.AuthResponse;
 import tn.fst.authservice.dto.LoginRequest;
 import tn.fst.authservice.dto.RegisterRequest;
+import tn.fst.authservice.dto.UpdateProfileRequest;
 import tn.fst.authservice.dto.UserResponse;
 import tn.fst.authservice.service.AuthService;
 
@@ -34,5 +35,13 @@ public class AuthController {
     @GetMapping("/users/{email}/exists")
     public ResponseEntity<Boolean> userExists(@PathVariable String email) {
         return ResponseEntity.ok(authService.userExists(email));
+    }
+
+    @PutMapping("/users/{email}")
+    public ResponseEntity<UserResponse> updateProfile(
+            @PathVariable String email,
+            @RequestBody UpdateProfileRequest request
+    ) {
+        return ResponseEntity.ok(authService.updateProfile(email, request));
     }
 }

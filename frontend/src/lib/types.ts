@@ -80,6 +80,7 @@ export interface Event {
   createurs: string[];
   partenaires: string[];
   participants: string[];
+  organisateur?: string;
 }
 
 export interface Notification {

@@ -21,6 +21,26 @@ export default defineConfig(({ mode }) => ({
         // Spring API gateway
         target: "http://localhost:8080",
         changeOrigin: true,
+      },
+      "/events": {
+        // Spring API gateway
+        target: "http://localhost:8080",
+        changeOrigin: true,
+      },
+      "/notifications": {
+        // Spring API gateway
+        target: "http://localhost:8080",
+        changeOrigin: true,
+      },
+      "/recommendations": {
+        // Spring API gateway
+        target: "http://localhost:8080",
+        changeOrigin: true,
+      },
+      "/lists": {
+        // Spring API gateway
+        target: "http://localhost:8080",
+        changeOrigin: true,
       }
     },
   },

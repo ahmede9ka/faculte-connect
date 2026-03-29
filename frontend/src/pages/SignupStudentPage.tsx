@@ -15,11 +15,14 @@ export default function SignupStudentPage() {
   const { signUpStudent } = useAuth();
   const navigate = useNavigate();
 
-  // Minimal fields required for Spring auth-service registration
+  // All fields for registration
   const [nom, setNom] = useState("");
   const [prenom, setPrenom] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [faculte, setFaculte] = useState("");
+  const [specialite, setSpecialite] = useState("");
+  const [idUniversitaire, setIdUniversitaire] = useState("");
 
   const { data: competencesList = [] } = useQuery<string[]>({ queryKey: ['competences'], queryFn: fetchCompetences });
   const { data: facultesList = [] } = useQuery<string[]>({ queryKey: ['facultes'], queryFn: fetchFacultes });
@@ -35,6 +38,10 @@ export default function SignupStudentPage() {
       email,
       password,
       name: `${prenom} ${nom}`.trim(),
+      faculte,
+      specialite: faculte, // Using faculte as specialite for now
+      idUniversitaire,
+      competences,
     });
     navigate('/dashboard');
   };
@@ -84,7 +91,7 @@ export default function SignupStudentPage() {
           </div>
           <div className="space-y-2">
             <Label>Faculté / Spécialité</Label>
-            <Select>
+            <Select value={faculte} onValueChange={setFaculte}>
               <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
               <SelectContent>
                 {facultesList.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}
@@ -113,7 +120,7 @@ export default function SignupStudentPage() {
           </div>
           <div className="space-y-2">
             <Label>ID universitaire (Bérasmi)</Label>
-            <Input placeholder="FST2024001" />
+            <Input placeholder="FST2024001" value={idUniversitaire} onChange={(e) => setIdUniversitaire(e.target.value)} />
           </div>
           <div className="space-y-2">
             <Label>Photo (optionnel)</Label>
