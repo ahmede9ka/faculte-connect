@@ -249,6 +249,22 @@ export const fetchProject = async (id: string): Promise<Project> => {
   return mapProject(p);
 };
 
+export const createProject = async (projectData: {
+  titre: string;
+  desc: string;
+  chefProjet: string;
+  organisation: string;
+  deadline: string;
+  validite: boolean;
+}): Promise<Project> => {
+  const projetRaw = await apiJson<ProjetRaw>(`/projets`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(projectData),
+  });
+  return mapProject(projetRaw);
+};
+
 export const fetchTasks = async (): Promise<Task[]> => {
   const email = getAuthEmail();
   if (!email) return [];
