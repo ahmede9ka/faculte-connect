@@ -1,5 +1,7 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { UserRole } from "./types";
+import { fetchUserByEmail, login as loginRequest, registerUser } from "./api";
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -98,86 +100,62 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const loginRes = await fetch("/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
-
-    if (!loginRes.ok) {
-      throw new Error("Login failed");
-    }
-
-    const loginJson: { token: string } = await loginRes.json();
+    const loginJson = await loginRequest(email, password);
 
     // Fetch user details (role/name) from backend.
-    const userRes = await fetch(`/auth/users/${encodeURIComponent(email)}`, {
-      method: "GET",
-    });
-    if (!userRes.ok) {
-      throw new Error("Failed to load user details");
-    }
+    const userJson = await fetchUserByEmail(email);
 
-    const userJson: { id: number; email: string; name: string; role: string } = await userRes.json();
-
-    const mappedRole = roleFromServer(userJson.role);
+    const resolvedEmail = typeof userJson.email === "string" ? userJson.email : email;
+    const resolvedName = typeof userJson.name === "string" ? userJson.name : resolvedEmail;
+    const resolvedRole = typeof userJson.role === "string" ? userJson.role : "";
+    const mappedRole = roleFromServer(resolvedRole);
 
     setStoredAuth({
       token: loginJson.token,
-      userEmail: userJson.email,
-      userName: userJson.name,
+      userEmail: resolvedEmail,
+      userName: resolvedName,
       userRole: mappedRole,
     });
 
     setAuth({
       isAuthenticated: true,
       token: loginJson.token,
-      userEmail: userJson.email,
-      userName: userJson.name,
+      userEmail: resolvedEmail,
+      userName: resolvedName,
       userRole: mappedRole,
     });
   };
 
   const signUpStudent = async (payload: SignUpStudentPayload) => {
-    const res = await fetch("/auth/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email: payload.email,
-        password: payload.password,
-        name: payload.name,
-        role: "INDIVIDU",
-        faculte: payload.faculte,
-        specialite: payload.specialite,
-        idUniversitaire: payload.idUniversitaire,
-        competences: payload.competences,
-        avatar: payload.avatar,
-      }),
+    await registerUser({
+      email: payload.email,
+      password: payload.password,
+      name: payload.name,
+      role: "INDIVIDU",
+      faculte: payload.faculte,
+      specialite: payload.specialite,
+      idUniversitaire: payload.idUniversitaire,
+      competences: payload.competences,
+      avatar: payload.avatar,
     });
-    if (!res.ok) throw new Error("Signup failed");
 
     // After register, login so the rest of the app can access /projets endpoints.
     await signIn(payload.email, payload.password);
   };
 
   const signUpOrganization = async (payload: SignUpOrganizationPayload) => {
-    const res = await fetch("/auth/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email: payload.email,
-        password: payload.password,
-        name: payload.name,
-        role: "ORGANISATION",
-        organizationType: payload.organizationType,
-        responsableNom: payload.responsableNom,
-        responsableEmail: payload.responsableEmail,
-        responsableTelephone: payload.responsableTelephone,
-        sponsors: payload.sponsors,
-        logo: payload.logo,
-      }),
+    await registerUser({
+      email: payload.email,
+      password: payload.password,
+      name: payload.name,
+      role: "ORGANISATION",
+      organizationType: payload.organizationType,
+      responsableNom: payload.responsableNom,
+      responsableEmail: payload.responsableEmail,
+      responsableTelephone: payload.responsableTelephone,
+      sponsors: payload.sponsors,
+      logo: payload.logo,
     });
-    if (!res.ok) throw new Error("Signup failed");
 
     await signIn(payload.email, payload.password);
   };

@@ -47,6 +47,24 @@ type UserRaw = {
   avatar?: unknown;
 };
 
+export type AuthRegisterPayload = {
+  email: string;
+  password: string;
+  name: string;
+  role: "INDIVIDU" | "ORGANISATION" | "ADMIN";
+  faculte?: string;
+  specialite?: string;
+  idUniversitaire?: string;
+  competences?: string[];
+  avatar?: string;
+  organizationType?: string;
+  responsableNom?: string;
+  responsableEmail?: string;
+  responsableTelephone?: string;
+  sponsors?: string[];
+  logo?: string;
+};
+
 function getAuthToken() {
   return localStorage.getItem(storage.token);
 }
@@ -66,6 +84,26 @@ function asNumber(v: unknown): number {
   const n = Number(v);
   return Number.isFinite(n) ? n : 0;
 }
+
+export const login = async (email: string, password: string): Promise<{ token: string }> => {
+  return apiJson<{ token: string }>(`/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+};
+
+export const registerUser = async (payload: AuthRegisterPayload): Promise<{ token: string }> => {
+  return apiJson<{ token: string }>(`/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+};
+
+export const fetchUserByEmail = async (email: string): Promise<UserRaw> => {
+  return apiJson<UserRaw>(`/auth/users/${encodeURIComponent(email)}`);
+};
 
 // FIX: use text/plain for DELETE/PATCH with no body to avoid 415 errors;
 // for responses with no body (204 No Content) we skip JSON parsing entirely.
@@ -190,7 +228,7 @@ export const fetchCurrentUser = async (): Promise<User | null> => {
   if (!email) return null;
 
   try {
-    const u = await apiJson<UserRaw>(`/auth/users/${encodeURIComponent(email)}`);
+    const u = await fetchUserByEmail(email);
     const name = asString(u.name || u.email);
     const parts = String(name).trim().split(/\s+/);
     const prenom = parts.length > 1 ? parts[0] : name;
