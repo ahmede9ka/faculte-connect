@@ -5,7 +5,6 @@ spring:
   application:
     name: PROJECT-SERVICE
 
-
   mongodb:
     host: ${MONGODB_HOST:localhost}
     port: ${MONGODB_PORT:27018}
@@ -13,7 +12,11 @@ spring:
     username: maher
     password: maher
     authentication-database: admin
-
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
 eureka:
   client:
     service-url:

@@ -1,12 +1,16 @@
 package tn.fst.projectservice.controller;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import tn.fst.projectservice.dto.AddMemberRequest;
 import tn.fst.projectservice.dto.ApprobationRequest;
 import tn.fst.projectservice.dto.ProjetRequest;
 import tn.fst.projectservice.dto.TacheRequest;
+import tn.fst.projectservice.dto.TaskMembersRequest;
+import tn.fst.projectservice.dto.UpdateMemberRequest;
 import tn.fst.projectservice.entity.Projet;
 import tn.fst.projectservice.entity.StatusApprobation;
 import tn.fst.projectservice.entity.StatusProjet;
@@ -68,19 +72,19 @@ public class ProjetController {
 
     @PatchMapping("/{id}/approbation")
     public ResponseEntity<Projet> updateApprobation(@PathVariable String id,
-                                                    @RequestBody ApprobationRequest request) {
+            @RequestBody ApprobationRequest request) {
         return ResponseEntity.ok(projetService.updateApprobation(id, request));
     }
 
     @PatchMapping("/{id}/progression")
     public ResponseEntity<Projet> updateProgression(@PathVariable String id,
-                                                    @RequestParam int valeur) {
+            @RequestParam int valeur) {
         return ResponseEntity.ok(projetService.updateProgression(id, valeur));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<Projet> update(@PathVariable String id,
-                                         @RequestBody ProjetRequest request) {
+            @RequestBody ProjetRequest request) {
         return ResponseEntity.ok(projetService.update(id, request));
     }
 
@@ -90,32 +94,86 @@ public class ProjetController {
         projetService.delete(id);
     }
 
+    // ===== MEMBRE ENDPOINTS =====
+
+    @GetMapping("/{id}/membres")
+    public ResponseEntity<List<String>> getMembers(@PathVariable String id) {
+        return ResponseEntity.ok(projetService.getMembers(id));
+    }
+
+    @PostMapping("/{id}/membres")
+    public ResponseEntity<Projet> addMember(@PathVariable String id,
+            @Valid @RequestBody AddMemberRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(projetService.addMember(id, request.getEmail()));
+    }
+
+    @PutMapping("/{id}/membres/{email}")
+    public ResponseEntity<Projet> updateMember(@PathVariable String id,
+            @PathVariable String email,
+            @Valid @RequestBody UpdateMemberRequest request) {
+        return ResponseEntity.ok(projetService.updateMemberEmail(id, email, request.getNewEmail()));
+    }
+
+    @DeleteMapping("/{id}/membres/{email}")
+    public ResponseEntity<Projet> removeMember(@PathVariable String id,
+            @PathVariable String email) {
+        return ResponseEntity.ok(projetService.removeMember(id, email));
+    }
+
     // ===== TACHE ENDPOINTS =====
 
     @PostMapping("/{projetId}/taches")
     public ResponseEntity<Projet> addTache(@PathVariable String projetId,
-                                           @RequestBody TacheRequest request) {
+            @RequestBody TacheRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(projetService.addTache(projetId, request));
     }
 
     @PutMapping("/{projetId}/taches/{tacheId}")
     public ResponseEntity<Projet> updateTache(@PathVariable String projetId,
-                                              @PathVariable String tacheId,
-                                              @RequestBody TacheRequest request) {
+            @PathVariable String tacheId,
+            @RequestBody TacheRequest request) {
         return ResponseEntity.ok(projetService.updateTache(projetId, tacheId, request));
+    }
+
+    @GetMapping("/{projetId}/taches/{tacheId}/membres")
+    public ResponseEntity<List<String>> getTaskMembers(@PathVariable String projetId,
+            @PathVariable String tacheId) {
+        return ResponseEntity.ok(projetService.getTaskMembers(projetId, tacheId));
+    }
+
+    @PostMapping("/{projetId}/taches/{tacheId}/membres")
+    public ResponseEntity<Projet> addTaskMembers(@PathVariable String projetId,
+            @PathVariable String tacheId,
+            @Valid @RequestBody TaskMembersRequest request) {
+        return ResponseEntity.ok(projetService.addTaskMembers(projetId, tacheId, request.getEmails()));
+    }
+
+    @PutMapping("/{projetId}/taches/{tacheId}/membres")
+    public ResponseEntity<Projet> replaceTaskMembers(@PathVariable String projetId,
+            @PathVariable String tacheId,
+            @Valid @RequestBody TaskMembersRequest request) {
+        return ResponseEntity.ok(projetService.replaceTaskMembers(projetId, tacheId, request.getEmails()));
+    }
+
+    @DeleteMapping("/{projetId}/taches/{tacheId}/membres/{email}")
+    public ResponseEntity<Projet> removeTaskMember(@PathVariable String projetId,
+            @PathVariable String tacheId,
+            @PathVariable String email) {
+        return ResponseEntity.ok(projetService.removeTaskMember(projetId, tacheId, email));
     }
 
     @DeleteMapping("/{projetId}/taches/{tacheId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteTache(@PathVariable String projetId,
-                            @PathVariable String tacheId) {
+            @PathVariable String tacheId) {
         projetService.deleteTache(projetId, tacheId);
     }
 
     @GetMapping("/{projetId}/taches/membre/{email}")
     public ResponseEntity<List<Tache>> getTachesByMembre(@PathVariable String projetId,
-                                                         @PathVariable String email) {
+            @PathVariable String email) {
         return ResponseEntity.ok(projetService.getTachesByMembre(projetId, email));
     }
 }

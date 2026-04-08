@@ -6,7 +6,9 @@ import tn.fst.projectservice.client.AuthServiceClient;
 import tn.fst.projectservice.dto.ApprobationRequest;
 import tn.fst.projectservice.dto.ProjetRequest;
 import tn.fst.projectservice.dto.TacheRequest;
+import tn.fst.projectservice.dto.TacheAssigneeEvent;
 import tn.fst.projectservice.entity.*;
+import tn.fst.projectservice.kafka.TacheEventProducer;
 import tn.fst.projectservice.repository.ProjetRepository;
 
 import java.util.ArrayList;
@@ -20,6 +22,7 @@ public class ProjetService {
 
     private final ProjetRepository projetRepository;
     private final AuthServiceClient authServiceClient;
+    private final TacheEventProducer tacheEventProducer;
 
     // ✅ Create project
     public Projet create(ProjetRequest request) {
@@ -128,38 +131,136 @@ public class ProjetService {
         projetRepository.deleteById(id);
     }
 
+    public Projet addMember(String projetId, String email) {
+        if (email == null || email.isBlank()) {
+            throw new RuntimeException("Email is required");
+        }
+
+        if (!authServiceClient.userExists(email)) {
+            throw new RuntimeException("User " + email + " not found");
+        }
+
+        Projet projet = getById(projetId);
+
+        if (projet.getMembres() == null) {
+            projet.setMembres(new ArrayList<>());
+        }
+
+        if (!projet.getMembres().contains(email)) {
+            projet.getMembres().add(email);
+        }
+
+        if (projet.getAffectations() == null) {
+            projet.setAffectations(new HashMap<>());
+        }
+
+        return projetRepository.save(projet);
+    }
+
+    public List<String> getMembers(String projetId) {
+        Projet projet = getById(projetId);
+        if (projet.getMembres() == null) {
+            return new ArrayList<>();
+        }
+        return projet.getMembres();
+    }
+
+    public Projet removeMember(String projetId, String email) {
+        if (email == null || email.isBlank()) {
+            throw new RuntimeException("Email is required");
+        }
+
+        Projet projet = getById(projetId);
+
+        if (projet.getMembres() != null) {
+            projet.getMembres().removeIf(member -> member.equals(email));
+        }
+
+        if (projet.getAffectations() != null) {
+            projet.getAffectations().remove(email);
+        }
+
+        if (projet.getTaches() != null) {
+            for (Tache tache : projet.getTaches()) {
+                if (tache.getMembresEmails() != null) {
+                    tache.getMembresEmails().removeIf(member -> member.equals(email));
+                }
+            }
+        }
+
+        return projetRepository.save(projet);
+    }
+
+    public Projet updateMemberEmail(String projetId, String currentEmail, String newEmail) {
+        if (currentEmail == null || currentEmail.isBlank()) {
+            throw new RuntimeException("Current email is required");
+        }
+        if (newEmail == null || newEmail.isBlank()) {
+            throw new RuntimeException("New email is required");
+        }
+        if (!authServiceClient.userExists(newEmail)) {
+            throw new RuntimeException("User " + newEmail + " not found");
+        }
+
+        Projet projet = getById(projetId);
+
+        if (projet.getMembres() == null) {
+            projet.setMembres(new ArrayList<>());
+        }
+
+        if (!projet.getMembres().contains(currentEmail)) {
+            throw new RuntimeException("Member " + currentEmail + " is not in this project");
+        }
+
+        projet.getMembres().removeIf(member -> member.equals(currentEmail));
+        if (!projet.getMembres().contains(newEmail)) {
+            projet.getMembres().add(newEmail);
+        }
+
+        if (projet.getAffectations() != null && projet.getAffectations().containsKey(currentEmail)) {
+            List<String> tacheIds = projet.getAffectations().remove(currentEmail);
+            projet.getAffectations().put(newEmail, tacheIds);
+        }
+
+        if (projet.getTaches() != null) {
+            for (Tache tache : projet.getTaches()) {
+                if (tache.getMembresEmails() != null && tache.getMembresEmails().contains(currentEmail)) {
+                    tache.getMembresEmails().removeIf(member -> member.equals(currentEmail));
+                    tache.getMembresEmails().add(newEmail);
+                }
+            }
+        }
+
+        return projetRepository.save(projet);
+    }
+
     // ✅ Add task to project
     public Projet addTache(String projetId, TacheRequest request) {
         Projet projet = getById(projetId); // ✅ declare projet FIRST
 
-        // ✅ then validate members
-        for (String email : request.getMembresEmails()) {
-            if (!authServiceClient.userExists(email)) {
-                throw new RuntimeException("User " + email + " not found");
-            }
-            if (!projet.getMembres().contains(email)) {
-                throw new RuntimeException("Member " + email + " is not in this project");
-            }
+        if (projet.getMembres() == null) {
+            projet.setMembres(new ArrayList<>());
         }
+        if (projet.getTaches() == null) {
+            projet.setTaches(new ArrayList<>());
+        }
+        if (projet.getAffectations() == null) {
+            projet.setAffectations(new HashMap<>());
+        }
+
+        List<String> membresEmails = new ArrayList<>();
 
         Tache tache = Tache.builder()
                 .id(UUID.randomUUID().toString())
                 .titre(request.getTitre())
                 .description(request.getDescription())
-                .status(StatusProjet.EN_ATTENTE)
+                .status(request.getStatus() != null ? request.getStatus() : StatusProjet.EN_ATTENTE)
                 .echeance(request.getEcheance())
-                .progression(0)
-                .membresEmails(request.getMembresEmails())
+                .progression(request.getProgression())
+                .membresEmails(membresEmails)
                 .build();
 
         projet.getTaches().add(tache);
-
-        // update affectations for each member
-        for (String email : request.getMembresEmails()) {
-            projet.getAffectations()
-                    .computeIfAbsent(email, k -> new ArrayList<>())
-                    .add(tache.getId());
-        }
 
         return projetRepository.save(projet);
     }
@@ -168,17 +269,19 @@ public class ProjetService {
     public Projet updateTache(String projetId, String tacheId, TacheRequest request) {
         Projet projet = getById(projetId);
 
-        projet.getTaches().stream()
+        if (projet.getMembres() == null) {
+            projet.setMembres(new ArrayList<>());
+        }
+        Tache tache = projet.getTaches().stream()
                 .filter(t -> t.getId().equals(tacheId))
                 .findFirst()
-                .ifPresent(tache -> {
-                    tache.setTitre(request.getTitre());
-                    tache.setDescription(request.getDescription());
-                    tache.setStatus(request.getStatus());
-                    tache.setEcheance(request.getEcheance());
-                    tache.setProgression(request.getProgression());
-                    tache.setMembresEmails(request.getMembresEmails());
-                });
+                .orElseThrow(() -> new RuntimeException("Tache not found: " + tacheId));
+
+        tache.setTitre(request.getTitre());
+        tache.setDescription(request.getDescription());
+        tache.setStatus(request.getStatus());
+        tache.setEcheance(request.getEcheance());
+        tache.setProgression(request.getProgression());
 
         // recalculate project progression from tasks average
         int avgProgression = (int) projet.getTaches().stream()
@@ -207,7 +310,161 @@ public class ProjetService {
     public List<Tache> getTachesByMembre(String projetId, String membreEmail) {
         Projet projet = getById(projetId);
         return projet.getTaches().stream()
-                .filter(t -> t.getMembresEmails().contains(membreEmail))
+                .filter(t -> t.getMembresEmails() != null && t.getMembresEmails().contains(membreEmail))
                 .toList();
+    }
+
+    public List<String> getTaskMembers(String projetId, String tacheId) {
+        Tache tache = getTaskOrThrow(projetId, tacheId);
+        if (tache.getMembresEmails() == null) {
+            return new ArrayList<>();
+        }
+        return tache.getMembresEmails();
+    }
+
+    public Projet addTaskMembers(String projetId, String tacheId, List<String> emails) {
+        Projet projet = getById(projetId);
+        ensureProjectCollections(projet);
+
+        Tache tache = getTaskOrThrow(projet, tacheId);
+        if (tache.getMembresEmails() == null) {
+            tache.setMembresEmails(new ArrayList<>());
+        }
+
+        List<String> added = new ArrayList<>();
+        for (String email : emails) {
+            validateMemberForProject(projet, email);
+            if (!tache.getMembresEmails().contains(email)) {
+                tache.getMembresEmails().add(email);
+                added.add(email);
+            }
+        }
+
+        for (String email : added) {
+            projet.getAffectations()
+                    .computeIfAbsent(email, k -> new ArrayList<>())
+                    .add(tacheId);
+        }
+
+        Projet saved = projetRepository.save(projet);
+        publishAssigneeEventIfNeeded(saved, tache, added);
+        return saved;
+    }
+
+    public Projet replaceTaskMembers(String projetId, String tacheId, List<String> emails) {
+        Projet projet = getById(projetId);
+        ensureProjectCollections(projet);
+
+        Tache tache = getTaskOrThrow(projet, tacheId);
+        List<String> oldMembers = tache.getMembresEmails() != null
+                ? new ArrayList<>(tache.getMembresEmails())
+                : new ArrayList<>();
+
+        List<String> newMembers = emails != null ? emails : new ArrayList<>();
+        for (String email : newMembers) {
+            validateMemberForProject(projet, email);
+        }
+
+        tache.setMembresEmails(new ArrayList<>(newMembers));
+
+        for (String oldEmail : oldMembers) {
+            if (!newMembers.contains(oldEmail)) {
+                List<String> tacheIds = projet.getAffectations().get(oldEmail);
+                if (tacheIds != null) {
+                    tacheIds.remove(tacheId);
+                }
+            }
+        }
+
+        for (String email : newMembers) {
+            projet.getAffectations()
+                    .computeIfAbsent(email, k -> new ArrayList<>())
+                    .add(tacheId);
+        }
+
+        List<String> added = new ArrayList<>();
+        for (String email : newMembers) {
+            if (!oldMembers.contains(email)) {
+                added.add(email);
+            }
+        }
+
+        Projet saved = projetRepository.save(projet);
+        publishAssigneeEventIfNeeded(saved, tache, added);
+        return saved;
+    }
+
+    public Projet removeTaskMember(String projetId, String tacheId, String email) {
+        if (email == null || email.isBlank()) {
+            throw new RuntimeException("Email is required");
+        }
+
+        Projet projet = getById(projetId);
+        ensureProjectCollections(projet);
+
+        Tache tache = getTaskOrThrow(projet, tacheId);
+        if (tache.getMembresEmails() != null) {
+            tache.getMembresEmails().removeIf(member -> member.equals(email));
+        }
+
+        List<String> tacheIds = projet.getAffectations().get(email);
+        if (tacheIds != null) {
+            tacheIds.remove(tacheId);
+        }
+
+        return projetRepository.save(projet);
+    }
+
+    private void ensureProjectCollections(Projet projet) {
+        if (projet.getMembres() == null) {
+            projet.setMembres(new ArrayList<>());
+        }
+        if (projet.getTaches() == null) {
+            projet.setTaches(new ArrayList<>());
+        }
+        if (projet.getAffectations() == null) {
+            projet.setAffectations(new HashMap<>());
+        }
+    }
+
+    private Tache getTaskOrThrow(String projetId, String tacheId) {
+        Projet projet = getById(projetId);
+        return getTaskOrThrow(projet, tacheId);
+    }
+
+    private Tache getTaskOrThrow(Projet projet, String tacheId) {
+        return projet.getTaches().stream()
+                .filter(t -> t.getId().equals(tacheId))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Tache not found: " + tacheId));
+    }
+
+    private void validateMemberForProject(Projet projet, String email) {
+        if (email == null || email.isBlank()) {
+            throw new RuntimeException("Email is required");
+        }
+        if (!authServiceClient.userExists(email)) {
+            throw new RuntimeException("User " + email + " not found");
+        }
+        if (!projet.getMembres().contains(email)) {
+            throw new RuntimeException("Member " + email + " is not in this project");
+        }
+    }
+
+    private void publishAssigneeEventIfNeeded(Projet projet, Tache tache, List<String> addedMembers) {
+        if (addedMembers == null || addedMembers.isEmpty()) {
+            return;
+        }
+
+        TacheAssigneeEvent event = TacheAssigneeEvent.builder()
+                .tacheId(tache.getId())
+                .tacheTitre(tache.getTitre())
+                .tacheDescription(tache.getDescription())
+                .projetId(projet.getId())
+                .projetNom(projet.getTitre())
+                .echeance(tache.getEcheance())
+                .membresEmails(addedMembers)
+                .build();
+        tacheEventProducer.publishTacheAssignee(event);
     }
 }
