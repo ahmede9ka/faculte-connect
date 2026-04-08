@@ -6,16 +6,43 @@ import path from "path";
 export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
-    port: 8080,
+    // Keep the frontend dev server on a different port than Spring gateway (8080)
+    port: 5173,
     hmr: {
       overlay: false,
     },
     proxy: {
-      '/api': {
-        target: 'http://localhost:5000',
+      "/auth": {
+        // Spring API gateway
+        target: "http://localhost:8080",
+        changeOrigin: true,
+      },
+      "/projets": {
+        // Spring API gateway
+        target: "http://localhost:8080",
+        changeOrigin: true,
+      },
+      "/events": {
+        // Spring API gateway
+        target: "http://localhost:8080",
+        changeOrigin: true,
+      },
+      "/notifications": {
+        // Spring API gateway
+        target: "http://localhost:8080",
+        changeOrigin: true,
+      },
+      "/recommendations": {
+        // Spring API gateway
+        target: "http://localhost:8080",
+        changeOrigin: true,
+      },
+      "/lists": {
+        // Spring API gateway
+        target: "http://localhost:8080",
         changeOrigin: true,
       }
-    }
+    },
   },
   plugins: [react()],
   resolve: {

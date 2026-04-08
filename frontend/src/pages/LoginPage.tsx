@@ -5,21 +5,24 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { GraduationCap, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
-import { UserRole } from '@/lib/types';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
-  const [loginAs, setLoginAs] = useState<UserRole>('student');
-  const { login } = useAuth();
+  const [error, setError] = useState<string | null>(null);
+  const { signIn } = useAuth();
   const navigate = useNavigate();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const names: Record<UserRole, string> = { student: 'Ahmed Ben Ali', organization: 'Club IEEE FST', admin: 'Admin FST' };
-    login(loginAs, names[loginAs]);
-    navigate('/dashboard');
+    setError(null);
+    try {
+      await signIn(email, password);
+      navigate('/dashboard');
+    } catch {
+      setError('Connexion impossible. Vérifiez votre email et mot de passe.');
+    }
   };
 
   return (
@@ -38,15 +41,7 @@ export default function LoginPage() {
             <p className="text-muted-foreground mt-1">Accédez à votre espace</p>
           </div>
 
-          {/* Demo role selector */}
-          <div className="flex gap-2 p-1 bg-muted rounded-lg">
-            {(['student', 'organization', 'admin'] as UserRole[]).map(r => (
-              <button key={r} onClick={() => setLoginAs(r)}
-                className={`flex-1 px-3 py-2 rounded-md text-xs font-medium transition-colors ${loginAs === r ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
-                {r === 'student' ? 'Étudiant' : r === 'organization' ? 'Organisation' : 'Admin'}
-              </button>
-            ))}
-          </div>
+          {error && <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-sm text-destructive">{error}</div>}
 
           <form onSubmit={handleLogin} className="space-y-5">
             <div className="space-y-2">

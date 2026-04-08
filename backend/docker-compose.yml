@@ -1,0 +1,40 @@
+services:
+
+  mongodb:
+    image: mongo:7
+    container_name: mongo_db
+    ports:
+      - "27018:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: maher
+      MONGO_INITDB_ROOT_PASSWORD: maher
+    volumes:
+      - mongo:/data/db
+    networks:
+      - microservices-net
+
+  mongo-express:
+    image: mongo-express
+    container_name: mongo_express
+    restart: always
+    ports:
+      - "8086:8081"
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: maher
+      ME_CONFIG_MONGODB_ADMINPASSWORD: maher
+      ME_CONFIG_MONGODB_SERVER: mongodb
+      ME_CONFIG_MONGODB_PORT: 27017
+      ME_CONFIG_BASICAUTH_USERNAME: maher      # ✅ web UI login
+      ME_CONFIG_BASICAUTH_PASSWORD: maher      # ✅ web UI password
+      ME_CONFIG_SITE_PORT: 8081
+    networks:
+      - microservices-net
+    depends_on:
+      - mongodb
+
+volumes:
+  mongo:
+
+networks:
+  microservices-net:
+    driver: bridge

@@ -26,7 +26,7 @@ npm run dev
 ```
 
 This will:
-- Start the backend Express server on `http://localhost:5000` (auto-reloading with nodemon).
+- Start the backend Express server on `http://localhost:8080` (auto-reloading with nodemon).
 - Start the frontend Vite server on `http://localhost:8080`.
 
 Open your browser and navigate to `http://localhost:8080` to access the application. The frontend is configured to proxy API requests to the backend automatically.

@@ -8,15 +8,19 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { User, Mail, GraduationCap, Award, FolderKanban, Building2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 function StudentProfile() {
+  const { userEmail } = useAuth();
   const { data: currentUser, isLoading: isLoadingUser } = useQuery<UserType>({ queryKey: ['currentUser'], queryFn: fetchCurrentUser });
   const { data: projects = [], isLoading: isLoadingProjects } = useQuery<Project[]>({ queryKey: ['projects'], queryFn: fetchProjects });
 
   if (isLoadingUser || isLoadingProjects) return <div className="p-8 text-center text-muted-foreground">Chargement du profil...</div>;
   if (!currentUser) return <div className="p-8 text-center text-destructive">Erreur: Utilisateur non trouvé</div>;
 
-  const myProjects = projects.filter(p => p.chefDeProjet === 'u1' || p.membres.some(m => m.userId === 'u1'));
+  const myProjects = projects.filter(
+    (p) => p.chefDeProjet === userEmail || p.membres.some((m) => m.userId === userEmail)
+  );
 
   return (
     <div className="space-y-6">
@@ -38,7 +42,9 @@ function StudentProfile() {
               ID: {currentUser.idUniversitaire}
             </div>
           </div>
-          <Button variant="outline" size="sm">Modifier</Button>
+          <Link to="/profile/edit">
+            <Button variant="outline" size="sm">Modifier</Button>
+          </Link>
         </div>
       </div>
 

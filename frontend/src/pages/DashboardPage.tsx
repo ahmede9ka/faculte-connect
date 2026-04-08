@@ -11,13 +11,17 @@ import { FolderKanban, ListTodo, CalendarDays, Lightbulb, ArrowRight, Clock } fr
 import { Button } from '@/components/ui/button';
 
 function StudentDashboard() {
+  const { userEmail } = useAuth();
   const { data: projects = [] } = useQuery<Project[]>({ queryKey: ['projects'], queryFn: fetchProjects });
   const { data: tasks = [] } = useQuery<Task[]>({ queryKey: ['tasks'], queryFn: fetchTasks });
   const { data: events = [] } = useQuery<Event[]>({ queryKey: ['events'], queryFn: fetchEvents });
   const { data: recommendations = [] } = useQuery<Recommendation[]>({ queryKey: ['recommendations'], queryFn: fetchRecommendations });
 
-  const myProjects = projects.filter(p => p.chefDeProjet === 'u1' || p.membres.some(m => m.userId === 'u1'));
-  const myTasks = tasks.filter(t => t.assigneA === 'u1');
+  const myProjects = projects.filter(
+    (p) => p.chefDeProjet === userEmail || p.membres.some((m) => m.userId === userEmail)
+  );
+  // fetchTasks already returns tasks assigned to the logged-in user.
+  const myTasks = tasks;
 
   return (
     <div className="space-y-6">

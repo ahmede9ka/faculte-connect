@@ -12,8 +12,17 @@ import { fetchCompetences, fetchFacultes } from '@/lib/api';
 
 export default function SignupStudentPage() {
   const [competences, setCompetences] = useState<string[]>([]);
-  const { login } = useAuth();
+  const { signUpStudent } = useAuth();
   const navigate = useNavigate();
+
+  // All fields for registration
+  const [nom, setNom] = useState("");
+  const [prenom, setPrenom] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [faculte, setFaculte] = useState("");
+  const [specialite, setSpecialite] = useState("");
+  const [idUniversitaire, setIdUniversitaire] = useState("");
 
   const { data: competencesList = [] } = useQuery<string[]>({ queryKey: ['competences'], queryFn: fetchCompetences });
   const { data: facultesList = [] } = useQuery<string[]>({ queryKey: ['facultes'], queryFn: fetchFacultes });
@@ -23,9 +32,17 @@ export default function SignupStudentPage() {
   };
   const removeCompetence = (c: string) => setCompetences(competences.filter(x => x !== c));
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    login('student', 'Ahmed Ben Ali');
+    await signUpStudent({
+      email,
+      password,
+      name: `${prenom} ${nom}`.trim(),
+      faculte,
+      specialite: faculte, // Using faculte as specialite for now
+      idUniversitaire,
+      competences,
+    });
     navigate('/dashboard');
   };
 
@@ -47,24 +64,34 @@ export default function SignupStudentPage() {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Nom</Label>
-              <Input placeholder="Ben Ali" />
+              <Input placeholder="Ben Ali" value={nom} onChange={(e) => setNom(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label>Prénom</Label>
-              <Input placeholder="Ahmed" />
+              <Input placeholder="Ahmed" value={prenom} onChange={(e) => setPrenom(e.target.value)} />
             </div>
           </div>
           <div className="space-y-2">
             <Label>Email universitaire</Label>
-            <Input type="email" placeholder="ahmed.benali@fst.utm.tn" />
+            <Input
+              type="email"
+              placeholder="ahmed.benali@fst.utm.tn"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
           </div>
           <div className="space-y-2">
             <Label>Mot de passe</Label>
-            <Input type="password" placeholder="••••••••" />
+            <Input
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
           </div>
           <div className="space-y-2">
             <Label>Faculté / Spécialité</Label>
-            <Select>
+            <Select value={faculte} onValueChange={setFaculte}>
               <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
               <SelectContent>
                 {facultesList.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}
@@ -93,7 +120,7 @@ export default function SignupStudentPage() {
           </div>
           <div className="space-y-2">
             <Label>ID universitaire (Bérasmi)</Label>
-            <Input placeholder="FST2024001" />
+            <Input placeholder="FST2024001" value={idUniversitaire} onChange={(e) => setIdUniversitaire(e.target.value)} />
           </div>
           <div className="space-y-2">
             <Label>Photo (optionnel)</Label>

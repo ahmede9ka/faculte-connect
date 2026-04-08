@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { DashboardLayout } from '@/components/DashboardLayout';
-import { useQuery } from '@tanstack/react-query';
-import { fetchEvents } from '@/lib/api';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { fetchEvents, participateInEvent, cancelEventParticipation, deleteEvent } from '@/lib/api';
 import { Event } from '@/lib/types';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
@@ -9,18 +9,69 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { CalendarDays, MapPin, Users, Plus, Download } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
 
 export default function EventsPage() {
-  const { userRole } = useAuth();
-  const [participating, setParticipating] = useState<string[]>([]);
-  
+  const { userRole, userEmail } = useAuth();
+  const queryClient = useQueryClient();
+
   const { data: events = [], isLoading } = useQuery<Event[]>({
     queryKey: ['events'],
     queryFn: fetchEvents
   });
 
-  const toggleParticipate = (id: string) => {
-    setParticipating(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  const participateMutation = useMutation({
+    mutationFn: ({ eventId, email }: { eventId: string; email: string }) =>
+      participateInEvent(eventId, email),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['events'] });
+      toast.success('Participation enregistrée avec succès');
+    },
+    onError: () => {
+      toast.error('Erreur lors de l\'inscription à l\'événement');
+    }
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: ({ eventId, email }: { eventId: string; email: string }) =>
+      cancelEventParticipation(eventId, email),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['events'] });
+      toast.success('Participation annulée');
+    },
+    onError: () => {
+      toast.error('Erreur lors de l\'annulation');
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (eventId: string) => deleteEvent(eventId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['events'] });
+      toast.success('Événement supprimé');
+    },
+    onError: () => {
+      toast.error('Erreur lors de la suppression');
+    }
+  });
+
+  const toggleParticipate = (eventId: string, isParticipating: boolean) => {
+    if (!userEmail) {
+      toast.error('Veuillez vous connecter');
+      return;
+    }
+
+    if (isParticipating) {
+      cancelMutation.mutate({ eventId, email: userEmail });
+    } else {
+      participateMutation.mutate({ eventId, email: userEmail });
+    }
+  };
+
+  const handleDelete = (eventId: string) => {
+    if (confirm('Êtes-vous sûr de vouloir supprimer cet événement ?')) {
+      deleteMutation.mutate(eventId);
+    }
   };
 
   if (userRole === 'organization') {
@@ -53,8 +104,8 @@ export default function EventsPage() {
                       <td className="px-5 py-4 text-right">
                         <div className="flex items-center justify-end gap-1">
                           <Button variant="ghost" size="sm">Voir</Button>
-                          <Button variant="ghost" size="sm">Modifier</Button>
-                          <Button variant="ghost" size="sm" className="text-destructive">Supprimer</Button>
+                          <Link to={`/events/${e.id}/edit`}><Button variant="ghost" size="sm">Modifier</Button></Link>
+                          <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleDelete(e.id)}>Supprimer</Button>
                         </div>
                       </td>
                     </tr>
@@ -77,7 +128,7 @@ export default function EventsPage() {
             <div className="col-span-full text-center py-8 text-muted-foreground">Chargement des événements...</div>
           ) : (
             events.map(e => {
-              const isJoined = participating.includes(e.id);
+              const isJoined = userEmail ? e.participants.includes(userEmail) : false;
               const isFull = e.placesRestantes === 0;
               return (
                 <Dialog key={e.id}>
@@ -100,7 +151,7 @@ export default function EventsPage() {
                             {isFull ? 'Complet' : `${e.placesRestantes} places`}
                           </Badge>
                           <Button size="sm" variant={isJoined ? 'outline' : 'default'} disabled={isFull && !isJoined}
-                            onClick={(ev) => { ev.stopPropagation(); toggleParticipate(e.id); }}>
+                            onClick={(ev) => { ev.stopPropagation(); toggleParticipate(e.id, isJoined); }}>
                             {isJoined ? 'Annuler' : 'Participer'}
                           </Button>
                         </div>
@@ -125,7 +176,7 @@ export default function EventsPage() {
                         </div>
                       )}
                       <div className="flex gap-2">
-                        <Button className="flex-1" onClick={() => toggleParticipate(e.id)} disabled={isFull && !isJoined}>
+                        <Button className="flex-1" onClick={() => toggleParticipate(e.id, isJoined)} disabled={isFull && !isJoined}>
                           {isJoined ? 'Annuler participation' : 'Participer'}
                         </Button>
                         <Button variant="outline" className="gap-1"><Download className="h-4 w-4" /> Certificat</Button>

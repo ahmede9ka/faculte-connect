@@ -5,13 +5,15 @@ import { Bell } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { fetchNotifications } from '@/lib/api';
-import { Notification } from '@/lib/types';
+import { getUnreadNotificationCount } from '@/lib/api';
 
 export function DashboardLayout({ children }: { children: ReactNode }) {
   const { userName } = useAuth();
-  const { data: notifications = [] } = useQuery<Notification[]>({ queryKey: ['notifications'], queryFn: fetchNotifications });
-  const unreadCount = notifications.filter(n => !n.lu).length;
+  const { data: unreadCount = 0 } = useQuery<number>({
+    queryKey: ['unreadCount'],
+    queryFn: getUnreadNotificationCount,
+    refetchInterval: 30000, // Refetch every 30 seconds
+  });
 
   return (
     <SidebarProvider>

@@ -11,8 +11,17 @@ interface SponsorInput { nom: string; logo: string; lien: string; }
 
 export default function SignupOrgPage() {
   const [sponsors, setSponsors] = useState<SponsorInput[]>([]);
-  const { login } = useAuth();
+  const { signUpOrganization } = useAuth();
   const navigate = useNavigate();
+
+  // All fields for registration
+  const [clubName, setClubName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [organizationType, setOrganizationType] = useState("");
+  const [responsableNom, setResponsableNom] = useState("");
+  const [responsableEmail, setResponsableEmail] = useState("");
+  const [responsableTelephone, setResponsableTelephone] = useState("");
 
   const addSponsor = () => setSponsors([...sponsors, { nom: '', logo: '', lien: '' }]);
   const removeSponsor = (i: number) => setSponsors(sponsors.filter((_, idx) => idx !== i));
@@ -22,9 +31,18 @@ export default function SignupOrgPage() {
     setSponsors(updated);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    login('organization', 'Club IEEE FST');
+    await signUpOrganization({
+      email,
+      password,
+      name: clubName,
+      organizationType,
+      responsableNom,
+      responsableEmail,
+      responsableTelephone,
+      sponsors: sponsors.map(s => s.nom),
+    });
     navigate('/dashboard');
   };
 
@@ -45,11 +63,11 @@ export default function SignupOrgPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label>Nom du club / association / département</Label>
-            <Input placeholder="Club IEEE FST" />
+            <Input placeholder="Club IEEE FST" value={clubName} onChange={(e) => setClubName(e.target.value)} />
           </div>
           <div className="space-y-2">
             <Label>Type</Label>
-            <Select>
+            <Select value={organizationType} onValueChange={setOrganizationType}>
               <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="Club">Club</SelectItem>
@@ -60,19 +78,29 @@ export default function SignupOrgPage() {
           </div>
           <div className="space-y-2">
             <Label>Email officiel (optionnel)</Label>
-            <Input type="email" placeholder="club@fst.utm.tn" />
+            <Input
+              type="email"
+              placeholder="club@fst.utm.tn"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
           </div>
           <div className="space-y-2">
             <Label>Mot de passe</Label>
-            <Input type="password" placeholder="••••••••" />
+            <Input
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
           </div>
 
           <div className="p-4 rounded-xl bg-muted/50 space-y-3">
             <Label className="text-sm font-semibold">Infos du responsable</Label>
             <div className="space-y-2">
-              <Input placeholder="Nom du responsable" />
-              <Input type="email" placeholder="Email" />
-              <Input type="tel" placeholder="Téléphone" />
+              <Input placeholder="Nom du responsable" value={responsableNom} onChange={(e) => setResponsableNom(e.target.value)} />
+              <Input type="email" placeholder="Email" value={responsableEmail} onChange={(e) => setResponsableEmail(e.target.value)} />
+              <Input type="tel" placeholder="Téléphone" value={responsableTelephone} onChange={(e) => setResponsableTelephone(e.target.value)} />
             </div>
           </div>
 

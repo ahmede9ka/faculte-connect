@@ -19,6 +19,7 @@ import StatisticsPage from "./pages/StatisticsPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import RecommendationsPage from "./pages/RecommendationsPage";
 import ProfilePage from "./pages/ProfilePage";
+import EditProfilePage from "./pages/EditProfilePage";
 import MembersPage from "./pages/MembersPage";
 import NotFound from "./pages/NotFound";
 
@@ -48,6 +49,7 @@ function AppRoutes() {
       <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
       <Route path="/recommendations" element={<ProtectedRoute><RecommendationsPage /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+      <Route path="/profile/edit" element={<ProtectedRoute><EditProfilePage /></ProtectedRoute>} />
       <Route path="/members" element={<ProtectedRoute><MembersPage /></ProtectedRoute>} />
       <Route path="/admin/students" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
       <Route path="/admin/organizations" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
