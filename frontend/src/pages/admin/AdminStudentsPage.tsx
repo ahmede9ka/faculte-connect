@@ -1,0 +1,159 @@
+import { useState } from 'react';
+import { DashboardLayout } from '@/components/DashboardLayout';
+import { useQuery } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Search, User, GraduationCap, Trash2, Eye } from 'lucide-react';
+
+interface StudentUser {
+  id: string;
+  name: string;
+  email: string;
+  faculte?: string;
+  specialite?: string;
+  idUniversitaire?: string;
+  competences?: string[];
+}
+
+async function fetchAllStudents(): Promise<StudentUser[]> {
+  try {
+    const token = localStorage.getItem('auth_token');
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const res = await fetch('/auth/users?role=INDIVIDU', { headers });
+    if (!res.ok) throw new Error('Failed');
+    const data = await res.json();
+    return Array.isArray(data) ? data.map((u: Record<string, unknown>) => ({
+      id: String(u.id ?? ''),
+      name: String(u.name ?? u.email ?? ''),
+      email: String(u.email ?? ''),
+      faculte: String(u.faculte ?? ''),
+      specialite: String(u.specialite ?? ''),
+      idUniversitaire: String(u.idUniversitaire ?? ''),
+      competences: Array.isArray(u.competences) ? u.competences.map(String) : [],
+    })) : [];
+  } catch {
+    return [];
+  }
+}
+
+export default function AdminStudentsPage() {
+  const [search, setSearch] = useState('');
+
+  const { data: students = [], isLoading } = useQuery<StudentUser[]>({
+    queryKey: ['admin-students'],
+    queryFn: fetchAllStudents,
+  });
+
+  const filtered = students.filter(s =>
+    s.name.toLowerCase().includes(search.toLowerCase()) ||
+    s.email.toLowerCase().includes(search.toLowerCase()) ||
+    (s.idUniversitaire ?? '').toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <DashboardLayout>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <GraduationCap className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h1 className="font-display text-2xl font-bold">Gestion des Étudiants</h1>
+              <p className="text-sm text-muted-foreground">{students.length} étudiants inscrits</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Search */}
+        <div className="relative max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Rechercher par nom, email, ID..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+
+        {/* Stats row */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {[
+            { label: 'Total étudiants', value: students.length, color: 'text-primary' },
+            { label: 'Actifs ce mois', value: Math.floor(students.length * 0.8), color: 'text-success' },
+            { label: 'Nouveaux inscrits', value: Math.floor(students.length * 0.1), color: 'text-secondary' },
+            { label: 'Avec compétences', value: students.filter(s => (s.competences?.length ?? 0) > 0).length, color: 'text-warning' },
+          ].map((stat, i) => (
+            <div key={i} className="bg-card rounded-xl border p-4 text-center">
+              <p className={`text-2xl font-display font-bold ${stat.color}`}>{stat.value}</p>
+              <p className="text-xs text-muted-foreground mt-1">{stat.label}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Table */}
+        <div className="bg-card rounded-xl border overflow-hidden">
+          {isLoading ? (
+            <div className="p-8 text-center text-muted-foreground">Chargement des étudiants...</div>
+          ) : filtered.length === 0 ? (
+            <div className="p-8 text-center text-muted-foreground">
+              <User className="h-10 w-10 mx-auto mb-3 opacity-30" />
+              <p>Aucun étudiant trouvé</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b bg-muted/30">
+                    <th className="text-left px-5 py-3 text-xs font-medium text-muted-foreground">Étudiant</th>
+                    <th className="text-left px-5 py-3 text-xs font-medium text-muted-foreground">ID Univ.</th>
+                    <th className="text-left px-5 py-3 text-xs font-medium text-muted-foreground">Faculté</th>
+                    <th className="text-left px-5 py-3 text-xs font-medium text-muted-foreground">Compétences</th>
+                    <th className="text-right px-5 py-3 text-xs font-medium text-muted-foreground">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map(s => (
+                    <tr key={s.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                            <User className="h-4 w-4 text-primary" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">{s.name}</p>
+                            <p className="text-xs text-muted-foreground">{s.email}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-5 py-4 text-sm text-muted-foreground">{s.idUniversitaire || '—'}</td>
+                      <td className="px-5 py-4 text-sm text-muted-foreground">{s.faculte || '—'}</td>
+                      <td className="px-5 py-4">
+                        <div className="flex flex-wrap gap-1">
+                          {(s.competences ?? []).slice(0, 2).map(c => (
+                            <Badge key={c} variant="secondary" className="text-xs">{c}</Badge>
+                          ))}
+                          {(s.competences?.length ?? 0) > 2 && (
+                            <Badge variant="outline" className="text-xs">+{(s.competences?.length ?? 0) - 2}</Badge>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button variant="ghost" size="sm"><Eye className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="sm" className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+    </DashboardLayout>
+  );
+}

@@ -3,8 +3,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { GraduationCap, Eye, EyeOff } from 'lucide-react';
+import { GraduationCap, Eye, EyeOff, Building2, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
+
+const personas = [
+  { label: 'Étudiant', icon: GraduationCap, route: '/dashboard/student', color: 'border-blue-400 hover:bg-blue-50' },
+  { label: 'Organisation', icon: Building2, route: '/dashboard/organization', color: 'border-emerald-400 hover:bg-emerald-50' },
+  { label: 'Admin', icon: ShieldCheck, route: '/dashboard/admin', color: 'border-purple-400 hover:bg-purple-50' },
+];
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -38,7 +44,31 @@ export default function LoginPage() {
               <span className="font-display font-bold">FST Projects</span>
             </Link>
             <h1 className="font-display text-2xl font-bold">Connexion</h1>
-            <p className="text-muted-foreground mt-1">Accédez à votre espace</p>
+            <p className="text-muted-foreground mt-1">Choisissez votre profil ou connectez-vous</p>
+          </div>
+
+          {/* Persona quick-access */}
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-muted-foreground">Accès rapide par profil</p>
+            <div className="grid grid-cols-3 gap-3">
+              {personas.map(({ label, icon: Icon, route, color }) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => navigate(route)}
+                  className={`flex flex-col items-center gap-2 rounded-lg border-2 p-4 transition-colors ${color} dark:hover:bg-white/10`}
+                >
+                  <Icon className="h-6 w-6" />
+                  <span className="text-xs font-medium">{label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="relative flex items-center gap-3">
+            <div className="flex-1 border-t" />
+            <span className="text-xs text-muted-foreground">ou</span>
+            <div className="flex-1 border-t" />
           </div>
 
           {error && <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-sm text-destructive">{error}</div>}

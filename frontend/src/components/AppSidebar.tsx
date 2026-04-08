@@ -1,47 +1,72 @@
-import { 
-  LayoutDashboard, FolderKanban, CalendarDays, BarChart3, Bell, 
+import {
+  LayoutDashboard, FolderKanban, CalendarDays, BarChart3, Bell,
   Lightbulb, User, LogOut, GraduationCap, Building2, ShieldCheck,
   ListTodo, Users, Settings
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/lib/auth-context';
+import { useLocation } from 'react-router-dom';
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
   SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar,
 } from '@/components/ui/sidebar';
+import type { UserRole } from '@/lib/types';
 
 const studentNav = [
-  { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
-  { title: 'Mes Projets', url: '/projects', icon: FolderKanban },
-  { title: 'Mes Tâches', url: '/tasks', icon: ListTodo },
-  { title: 'Événements', url: '/events', icon: CalendarDays },
-  { title: 'Recommandations', url: '/recommendations', icon: Lightbulb },
-  { title: 'Notifications', url: '/notifications', icon: Bell },
-  { title: 'Profil', url: '/profile', icon: User },
+  { title: 'Dashboard', url: '/dashboard/student', icon: LayoutDashboard },
+  { title: 'Mes Projets', url: '/student/projects', icon: FolderKanban },
+  { title: 'Mes Tâches', url: '/student/tasks', icon: ListTodo },
+  { title: 'Événements', url: '/student/events', icon: CalendarDays },
+  { title: 'Recommandations', url: '/student/recommendations', icon: Lightbulb },
+  { title: 'Notifications', url: '/student/notifications', icon: Bell },
+  { title: 'Profil', url: '/student/profile', icon: User },
 ];
 
 const orgNav = [
-  { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
-  { title: 'Projets', url: '/projects', icon: FolderKanban },
-  { title: 'Événements', url: '/events', icon: CalendarDays },
-  { title: 'Membres', url: '/members', icon: Users },
-  { title: 'Statistiques', url: '/statistics', icon: BarChart3 },
-  { title: 'Notifications', url: '/notifications', icon: Bell },
-  { title: 'Profil', url: '/profile', icon: Settings },
+  { title: 'Dashboard', url: '/dashboard/organization', icon: LayoutDashboard },
+  { title: 'Projets', url: '/org/projects', icon: FolderKanban },
+  { title: 'Événements', url: '/org/events', icon: CalendarDays },
+  { title: 'Membres', url: '/org/members', icon: Users },
+  { title: 'Statistiques', url: '/org/statistics', icon: BarChart3 },
+  { title: 'Notifications', url: '/org/notifications', icon: Bell },
+  { title: 'Profil', url: '/org/profile', icon: Settings },
 ];
 
 const adminNav = [
-  { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
+  { title: 'Dashboard', url: '/dashboard/admin', icon: LayoutDashboard },
   { title: 'Étudiants', url: '/admin/students', icon: GraduationCap },
   { title: 'Organisations', url: '/admin/organizations', icon: Building2 },
   { title: 'Statistiques', url: '/statistics', icon: BarChart3 },
   { title: 'Notifications', url: '/notifications', icon: Bell },
 ];
 
+const ROLE_KEY = 'active_role';
+
+function roleFromPath(pathname: string): UserRole {
+  if (pathname.startsWith('/dashboard/admin') || pathname.startsWith('/admin/')) {
+    sessionStorage.setItem(ROLE_KEY, 'admin');
+    return 'admin';
+  }
+  if (pathname.startsWith('/dashboard/organization') || pathname.startsWith('/org/')) {
+    sessionStorage.setItem(ROLE_KEY, 'organization');
+    return 'organization';
+  }
+  if (pathname.startsWith('/dashboard/student') || pathname.startsWith('/student/')) {
+    sessionStorage.setItem(ROLE_KEY, 'student');
+    return 'student';
+  }
+  // Shared pages (e.g. /projects/:id): reuse last known role
+  const saved = sessionStorage.getItem(ROLE_KEY) as UserRole | null;
+  return saved ?? 'student';
+}
+
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
-  const { userRole, userName, logout } = useAuth();
+  const { userRole: authRole, isAuthenticated, userName, logout } = useAuth();
+  const { pathname } = useLocation();
+
+  const userRole: UserRole = isAuthenticated ? authRole : roleFromPath(pathname);
 
   const navItems = userRole === 'admin' ? adminNav : userRole === 'organization' ? orgNav : studentNav;
   const roleLabel = userRole === 'admin' ? 'Admin' : userRole === 'organization' ? 'Organisation' : 'Étudiant';
