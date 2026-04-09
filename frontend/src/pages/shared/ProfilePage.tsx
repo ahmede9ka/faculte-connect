@@ -1,7 +1,7 @@
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { useAuth } from '@/lib/auth-context';
 import { useQuery } from '@tanstack/react-query';
-import { fetchCurrentUser, fetchProjects } from '@/lib/api';
+import { fetchCurrentUser, fetchEventsByOrganizer, fetchMyProjects, fetchProjectsByOrganisation } from '@/lib/api';
 import { Project, User as UserType } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -13,14 +13,15 @@ import { Link } from 'react-router-dom';
 function StudentProfile() {
   const { userEmail } = useAuth();
   const { data: currentUser, isLoading: isLoadingUser } = useQuery<UserType>({ queryKey: ['currentUser'], queryFn: fetchCurrentUser });
-  const { data: projects = [], isLoading: isLoadingProjects } = useQuery<Project[]>({ queryKey: ['projects'], queryFn: fetchProjects });
+  const { data: projects = [], isLoading: isLoadingProjects } = useQuery<Project[]>({
+    queryKey: ['projects', 'mine'],
+    queryFn: fetchMyProjects,
+  });
 
   if (isLoadingUser || isLoadingProjects) return <div className="p-8 text-center text-muted-foreground">Chargement du profil...</div>;
   if (!currentUser) return <div className="p-8 text-center text-destructive">Erreur: Utilisateur non trouvé</div>;
 
-  const myProjects = projects.filter(
-    (p) => p.chefDeProjet === userEmail || p.membres.some((m) => m.userId === userEmail)
-  );
+  const myProjects = projects;
 
   return (
     <div className="space-y-6">
@@ -91,7 +92,17 @@ function StudentProfile() {
 }
 
 function OrgProfile() {
-  const { data: projects = [] } = useQuery<Project[]>({ queryKey: ['projects'], queryFn: fetchProjects });
+  const { userName, userEmail } = useAuth();
+  const { data: projects = [] } = useQuery<Project[]>({
+    queryKey: ['projects', 'org', userName],
+    queryFn: () => fetchProjectsByOrganisation(userName),
+    enabled: Boolean(userName),
+  });
+  const { data: events = [] } = useQuery({
+    queryKey: ['events', 'org', userEmail],
+    queryFn: () => fetchEventsByOrganizer(),
+    enabled: Boolean(userEmail),
+  });
 
   return (
     <div className="space-y-6">
@@ -127,7 +138,7 @@ function OrgProfile() {
           <p className="text-sm text-muted-foreground">Projets créés</p>
         </div>
         <div className="bg-card rounded-xl border p-6 text-center">
-          <p className="text-3xl font-display font-bold text-secondary">4</p>
+          <p className="text-3xl font-display font-bold text-secondary">{events.length}</p>
           <p className="text-sm text-muted-foreground">Événements créés</p>
         </div>
       </div>

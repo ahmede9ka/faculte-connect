@@ -1,7 +1,7 @@
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { useAuth } from '@/lib/auth-context';
 import { useQuery } from '@tanstack/react-query';
-import { fetchCurrentUser, fetchProjects } from '@/lib/api';
+import { fetchCurrentUser, fetchMyProjects } from '@/lib/api';
 import { Project, User } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -17,17 +17,15 @@ export default function StudentProfilePage() {
     queryFn: fetchCurrentUser,
   });
   const { data: projects = [], isLoading: loadingProjects } = useQuery<Project[]>({
-    queryKey: ['projects'],
-    queryFn: fetchProjects,
+    queryKey: ['projects', 'mine'],
+    queryFn: fetchMyProjects,
   });
 
   if (loadingUser || loadingProjects) {
     return <DashboardLayout><div className="p-8 text-center text-muted-foreground">Chargement du profil...</div></DashboardLayout>;
   }
 
-  const myProjects = projects.filter(
-    p => p.chefDeProjet === userEmail || p.membres.some(m => m.userId === userEmail)
-  );
+  const myProjects = projects;
   const asChef = myProjects.filter(p => p.chefDeProjet === userEmail);
   const asMembre = myProjects.filter(p => p.chefDeProjet !== userEmail);
 

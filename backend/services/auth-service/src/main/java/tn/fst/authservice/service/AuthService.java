@@ -10,9 +10,13 @@ import tn.fst.authservice.dto.LoginRequest;
 import tn.fst.authservice.dto.RegisterRequest;
 import tn.fst.authservice.dto.UpdateProfileRequest;
 import tn.fst.authservice.dto.UserResponse;
+import tn.fst.authservice.entity.Role;
 import tn.fst.authservice.entity.User;
 import tn.fst.authservice.repository.UserRepository;
 import tn.fst.authservice.security.JwtService;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -61,9 +65,7 @@ public class AuthService {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         request.getEmail(),
-                        request.getPassword()
-                )
-        );
+                        request.getPassword()));
 
         // ✅ If we reach here, credentials are valid
         User user = userRepository.findByEmail(request.getEmail())
@@ -71,6 +73,7 @@ public class AuthService {
 
         return new AuthResponse(jwtService.generateToken(user.getEmail()));
     }
+
     public UserResponse getUserByEmail(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found: " + email));
@@ -79,6 +82,13 @@ public class AuthService {
 
     public boolean userExists(String email) {
         return userRepository.existsByEmail(email);
+    }
+
+    public List<UserResponse> getUsersByRole(Role role) {
+        return userRepository.findByRole(role)
+                .stream()
+                .map(this::mapToUserResponse)
+                .collect(Collectors.toList());
     }
 
     public UserResponse updateProfile(String email, UpdateProfileRequest request) {

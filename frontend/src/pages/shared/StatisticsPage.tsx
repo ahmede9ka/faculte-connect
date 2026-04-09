@@ -1,21 +1,50 @@
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { StatCard } from '@/components/StatCard';
 import { useQuery } from '@tanstack/react-query';
-import { fetchProjects, fetchTasks, fetchMembers } from '@/lib/api';
+import { fetchMyProjects, fetchProjects, fetchProjectsByOrganisation, fetchTasks } from '@/lib/api';
 import { Project, Task, ProjectMember } from '@/lib/types';
 import { BarChart3, Users, ListTodo, TrendingUp } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useState } from 'react';
+import { useAuth } from '@/lib/auth-context';
 
 export default function StatisticsPage() {
+  const { userRole, userName } = useAuth();
   const [filter, setFilter] = useState('all');
 
-  const { data: projects = [], isLoading: isLoadingProjects } = useQuery<Project[]>({ queryKey: ['projects'], queryFn: fetchProjects });
-  const { data: tasks = [], isLoading: isLoadingTasks } = useQuery<Task[]>({ queryKey: ['tasks'], queryFn: fetchTasks });
-  const { data: members = [], isLoading: isLoadingMembers } = useQuery<ProjectMember[]>({ queryKey: ['members'], queryFn: fetchMembers });
+  const { data: projects = [], isLoading: isLoadingProjects } = useQuery<Project[]>({
+    queryKey: ['projects', 'stats', userRole, userName],
+    queryFn: () => {
+      if (userRole === 'organization') return fetchProjectsByOrganisation(userName);
+      if (userRole === 'student') return fetchMyProjects();
+      return fetchProjects();
+    },
+    enabled: userRole !== 'organization' || Boolean(userName),
+  });
+  const { data: tasks = [], isLoading: isLoadingTasks } = useQuery<Task[]>({
+    queryKey: ['tasks', 'stats'],
+    queryFn: fetchTasks,
+  });
+
+  const members = projects.reduce<ProjectMember[]>((acc, project) => {
+    for (const member of project.membres || []) {
+      if (!acc.some((m) => m.email === member.email)) {
+        acc.push({
+          id: member.email,
+          userId: member.email,
+          nom: member.email,
+          email: member.email,
+          role: member.role,
+        });
+      }
+    }
+    return acc;
+  }, []);
 
   const totalMembers = members.length;
-  const avgMembers = projects.length > 0 ? (projects.reduce((s, p) => s + p.membres.length, 0) / projects.length).toFixed(1) : "0";
+  const avgMembers = projects.length > 0
+    ? (projects.reduce((s, p) => s + p.membres.length, 0) / projects.length).toFixed(1)
+    : "0";
   const completedTasks = tasks.filter(t => t.statut === 'Terminée').length;
 
   // Simulate member activity data

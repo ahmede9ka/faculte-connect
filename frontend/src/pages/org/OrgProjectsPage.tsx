@@ -4,8 +4,9 @@ import { useQuery } from '@tanstack/react-query';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { StatusBadge } from '@/components/StatusBadge';
 import { ProgressBar } from '@/components/ProgressBar';
-import { fetchProjects } from '@/lib/api';
+import { fetchProjectsByOrganisation } from '@/lib/api';
 import { Project } from '@/lib/types';
+import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -14,10 +15,12 @@ import { Plus, Search, Eye, Pencil, Trash2 } from 'lucide-react';
 export default function OrgProjectsPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const { userName } = useAuth();
 
   const { data: projects = [], isLoading } = useQuery<Project[]>({
-    queryKey: ['projects'],
-    queryFn: fetchProjects,
+    queryKey: ['projects', userName],
+    queryFn: () => fetchProjectsByOrganisation(userName),
+    enabled: Boolean(userName),
   });
 
   const filtered = projects.filter(p => {

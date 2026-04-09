@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { StatusBadge } from '@/components/StatusBadge';
 import { ProgressBar } from '@/components/ProgressBar';
-import { fetchProjects } from '@/lib/api';
+import { fetchMyProjects, fetchProjects, fetchProjectsByOrganisation } from '@/lib/api';
 import { Project } from '@/lib/types';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
@@ -13,13 +13,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Plus, Search, Eye, Pencil, Trash2 } from 'lucide-react';
 
 export default function ProjectsListPage() {
-  const { userRole } = useAuth();
+  const { userRole, userName } = useAuth();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
   const { data: projects = [], isLoading } = useQuery<Project[]>({
-    queryKey: ['projects'],
-    queryFn: fetchProjects
+    queryKey: ['projects', 'list', userRole, userName],
+    queryFn: () => {
+      if (userRole === 'organization') return fetchProjectsByOrganisation(userName);
+      if (userRole === 'student') return fetchMyProjects();
+      return fetchProjects();
+    },
+    enabled: userRole !== 'organization' || Boolean(userName),
   });
 
   const filtered = projects.filter(p => {

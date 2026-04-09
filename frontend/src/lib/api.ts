@@ -16,6 +16,7 @@ type ProjetRaw = {
   progression?: unknown;
   membres?: unknown;
   ressources?: unknown;
+  taches?: unknown;
 };
 
 type RessourceRaw = {
@@ -166,6 +167,9 @@ function mapProject(p: ProjetRaw): Project {
     ? (p.membres as unknown[]).map(asString)
     : [];
   const chefEmail: string = asString(p.chefProjet);
+  const taches: Task[] = Array.isArray(p.taches)
+    ? (p.taches as unknown[]).map((t) => mapTask(t as TacheRaw, asString(p.id)))
+    : [];
 
   return {
     id: asString(p.id),
@@ -194,6 +198,7 @@ function mapProject(p: ProjetRaw): Project {
       // "valeur" in the Ressource entity maps to our frontend "lien" field
       lien: asString(r.valeur),
     })),
+    taches,
   };
 }
 
@@ -310,9 +315,94 @@ export const fetchProjects = async (): Promise<Project[]> => {
   return projectsRaw.map(mapProject);
 };
 
+export const fetchProjectsByChef = async (email: string): Promise<Project[]> => {
+  if (!email) return [];
+
+  try {
+    const projectsRaw = await apiJson<ProjetRaw[]>(
+      `/projets/chef/${encodeURIComponent(email)}`
+    );
+    return projectsRaw.map(mapProject);
+  } catch {
+    return [];
+  }
+};
+
+export const fetchProjectsByMember = async (email: string): Promise<Project[]> => {
+  if (!email) return [];
+
+  try {
+    const projectsRaw = await apiJson<ProjetRaw[]>(
+      `/projets/membre/${encodeURIComponent(email)}`
+    );
+    return projectsRaw.map(mapProject);
+  } catch {
+    return [];
+  }
+};
+
+export const fetchProjectsByOrganisation = async (organisation: string): Promise<Project[]> => {
+  if (!organisation) return [];
+  const projectsRaw = await apiJson<ProjetRaw[]>(
+    `/projets/organisation/${encodeURIComponent(organisation)}`
+  );
+  return projectsRaw.map(mapProject);
+};
+
+export const fetchMyProjects = async (): Promise<Project[]> => {
+  const email = getAuthEmail();
+  if (!email) return [];
+
+  const [asChef, asMember] = await Promise.all([
+    fetchProjectsByChef(email),
+    fetchProjectsByMember(email),
+  ]);
+
+  const merged = new Map<string, Project>();
+  for (const p of [...asChef, ...asMember]) {
+    if (p.id) merged.set(p.id, p);
+  }
+  return Array.from(merged.values());
+};
+
 export const fetchProject = async (id: string): Promise<Project> => {
   const p = await apiJson<ProjetRaw>(`/projets/${encodeURIComponent(id)}`);
   return mapProject(p);
+};
+
+// ==================== PROJECT MEMBERS ====================
+
+export const addProjectMember = async (projetId: string, email: string): Promise<Project> => {
+  const projetRaw = await apiJson<ProjetRaw>(`/projets/${encodeURIComponent(projetId)}/membres`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  return mapProject(projetRaw);
+};
+
+export const updateProjectMember = async (
+  projetId: string,
+  currentEmail: string,
+  newEmail: string
+): Promise<Project> => {
+  const projetRaw = await apiJson<ProjetRaw>(
+    `/projets/${encodeURIComponent(projetId)}/membres/${encodeURIComponent(currentEmail)}`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ newEmail }),
+    }
+  );
+  return mapProject(projetRaw);
+};
+
+export const removeProjectMember = async (projetId: string, email: string): Promise<Project> => {
+  const projetRaw = await apiJson<ProjetRaw>(
+    `/projets/${encodeURIComponent(projetId)}/membres/${encodeURIComponent(email)}`,
+    { method: "DELETE" }
+  );
+  return mapProject(projetRaw);
 };
 
 // FIX: createProject payload now matches ProjetRequest fully.
@@ -362,8 +452,8 @@ export const fetchTasks = async (): Promise<Task[]> => {
   const email = getAuthEmail();
   if (!email) return [];
 
-  const projectsRaw = await apiJson<ProjetRaw[]>(`/projets`);
-  const projectIds = projectsRaw.map((p) => asString(p.id)).filter(Boolean);
+  const projects = await fetchMyProjects();
+  const projectIds = projects.map((p) => asString(p.id)).filter(Boolean);
 
   const tasksNested = await Promise.all(
     projectIds.map(async (projectId) => {
@@ -417,6 +507,22 @@ export const addTask = async (
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
+    }
+  );
+  return mapProject(projetRaw);
+};
+
+export const addTaskMembers = async (
+  projetId: string,
+  tacheId: string,
+  emails: string[]
+): Promise<Project> => {
+  const projetRaw = await apiJson<ProjetRaw>(
+    `/projets/${encodeURIComponent(projetId)}/taches/${encodeURIComponent(tacheId)}/membres`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ emails }),
     }
   );
   return mapProject(projetRaw);

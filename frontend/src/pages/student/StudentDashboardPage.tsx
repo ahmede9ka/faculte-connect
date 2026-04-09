@@ -3,23 +3,19 @@ import { DashboardLayout } from '@/components/DashboardLayout';
 import { StatCard } from '@/components/StatCard';
 import { ProgressBar } from '@/components/ProgressBar';
 import { StatusBadge } from '@/components/StatusBadge';
-import { useAuth } from '@/lib/auth-context';
 import { useQuery } from '@tanstack/react-query';
-import { fetchProjects, fetchTasks, fetchEvents, fetchRecommendations } from '@/lib/api';
+import { fetchMyProjects, fetchTasks, fetchEvents, fetchRecommendations } from '@/lib/api';
 import { Project, Task, Event, Recommendation } from '@/lib/types';
 import { FolderKanban, ListTodo, CalendarDays, Lightbulb, ArrowRight, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function StudentDashboardPage() {
-  const { userEmail } = useAuth();
-  const { data: projects = [] } = useQuery<Project[]>({ queryKey: ['projects'], queryFn: fetchProjects });
-  const { data: tasks = [] } = useQuery<Task[]>({ queryKey: ['tasks'], queryFn: fetchTasks });
+  const { data: projects = [] } = useQuery<Project[]>({ queryKey: ['projects', 'mine'], queryFn: fetchMyProjects });
+  const { data: tasks = [] } = useQuery<Task[]>({ queryKey: ['tasks', 'mine'], queryFn: fetchTasks });
   const { data: events = [] } = useQuery<Event[]>({ queryKey: ['events'], queryFn: fetchEvents });
   const { data: recommendations = [] } = useQuery<Recommendation[]>({ queryKey: ['recommendations'], queryFn: fetchRecommendations });
 
-  const myProjects = projects.filter(
-    (p) => p.chefDeProjet === userEmail || p.membres.some((m) => m.userId === userEmail)
-  );
+  const myProjects = projects;
   const myTasks = tasks;
 
   return (

@@ -3,18 +3,21 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { GraduationCap, Eye, EyeOff, Building2, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
+import { UserRole } from '@/lib/types';
 
-const personas = [
-  { label: 'Étudiant', icon: GraduationCap, route: '/dashboard/student', color: 'border-blue-400 hover:bg-blue-50' },
-  { label: 'Organisation', icon: Building2, route: '/dashboard/organization', color: 'border-emerald-400 hover:bg-emerald-50' },
-  { label: 'Admin', icon: ShieldCheck, route: '/dashboard/admin', color: 'border-purple-400 hover:bg-purple-50' },
+const personas: Array<{ label: string; role: UserRole; icon: typeof GraduationCap; color: string; }> = [
+  { label: 'Étudiant', role: 'student', icon: GraduationCap, color: 'border-blue-400 hover:bg-blue-50' },
+  { label: 'Organisation', role: 'organization', icon: Building2, color: 'border-emerald-400 hover:bg-emerald-50' },
+  { label: 'Admin', role: 'admin', icon: ShieldCheck, color: 'border-purple-400 hover:bg-purple-50' },
 ];
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole] = useState<UserRole>('student');
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { signIn } = useAuth();
@@ -24,10 +27,15 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
     try {
-      await signIn(email, password);
-      navigate('/dashboard');
+      const resolvedRole = await signIn(email, password, role);
+      const target = resolvedRole === 'admin'
+        ? '/dashboard/admin'
+        : resolvedRole === 'organization'
+          ? '/dashboard/organization'
+          : '/dashboard/student';
+      navigate(target);
     } catch {
-      setError('Connexion impossible. Vérifiez votre email et mot de passe.');
+      setError('Rôle invalide pour ce compte ou identifiants incorrects.');
     }
   };
 
@@ -51,12 +59,12 @@ export default function LoginPage() {
           <div className="space-y-2">
             <p className="text-sm font-medium text-muted-foreground">Accès rapide par profil</p>
             <div className="grid grid-cols-3 gap-3">
-              {personas.map(({ label, icon: Icon, route, color }) => (
+              {personas.map(({ label, role: roleValue, icon: Icon, color }) => (
                 <button
                   key={label}
                   type="button"
-                  onClick={() => navigate(route)}
-                  className={`flex flex-col items-center gap-2 rounded-lg border-2 p-4 transition-colors ${color} dark:hover:bg-white/10`}
+                  onClick={() => setRole(roleValue)}
+                  className={`flex flex-col items-center gap-2 rounded-lg border-2 p-4 transition-colors ${color} ${role === roleValue ? 'ring-2 ring-primary/40' : ''} dark:hover:bg-white/10`}
                 >
                   <Icon className="h-6 w-6" />
                   <span className="text-xs font-medium">{label}</span>
@@ -77,6 +85,17 @@ export default function LoginPage() {
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input id="email" type="email" placeholder="votre.email@fst.utm.tn" value={email} onChange={e => setEmail(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Rôle</Label>
+              <Select value={role} onValueChange={(value) => setRole(value as UserRole)}>
+                <SelectTrigger><SelectValue placeholder="Choisir un rôle" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="student">Étudiant</SelectItem>
+                  <SelectItem value="organization">Organisation</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Mot de passe</Label>

@@ -35,7 +35,7 @@ interface SignUpOrganizationPayload {
 }
 
 interface AuthContextType extends AuthState {
-  signIn: (email: string, password: string) => Promise<void>;
+  signIn: (email: string, password: string, expectedRole?: UserRole) => Promise<UserRole>;
   signUpStudent: (payload: SignUpStudentPayload) => Promise<void>;
   signUpOrganization: (payload: SignUpOrganizationPayload) => Promise<void>;
   logout: () => void;
@@ -99,8 +99,62 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const signIn = async (email: string, password: string) => {
+  useEffect(() => {
+    if (!auth.isAuthenticated || !auth.userEmail) return;
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const userJson = await fetchUserByEmail(auth.userEmail);
+        const resolvedEmail = typeof userJson.email === "string" ? userJson.email : auth.userEmail;
+        const resolvedName = typeof userJson.name === "string" ? userJson.name : resolvedEmail;
+        const resolvedRole = typeof userJson.role === "string" ? userJson.role : "";
+        const mappedRole = roleFromServer(resolvedRole);
+
+        if (cancelled) return;
+
+        setStoredAuth({
+          token: auth.token,
+          userEmail: resolvedEmail,
+          userName: resolvedName,
+          userRole: mappedRole,
+        });
+
+        setAuth((prev) => ({
+          ...prev,
+          userEmail: resolvedEmail,
+          userName: resolvedName,
+          userRole: mappedRole,
+        }));
+      } catch {
+        // Keep stored auth if refresh fails (e.g., gateway down).
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [auth.isAuthenticated, auth.userEmail, auth.token]);
+
+  const signIn = async (email: string, password: string, expectedRole?: UserRole) => {
     const loginJson = await loginRequest(email, password);
+
+    // Store minimal auth first so refreshes work even if the profile call fails.
+    const fallbackRole = expectedRole || "student";
+    setStoredAuth({
+      token: loginJson.token,
+      userEmail: email,
+      userName: email,
+      userRole: fallbackRole,
+    });
+    setAuth({
+      isAuthenticated: true,
+      token: loginJson.token,
+      userEmail: email,
+      userName: email,
+      userRole: fallbackRole,
+    });
 
     // Fetch user details (role/name) from backend.
     const userJson = await fetchUserByEmail(email);
@@ -109,6 +163,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const resolvedName = typeof userJson.name === "string" ? userJson.name : resolvedEmail;
     const resolvedRole = typeof userJson.role === "string" ? userJson.role : "";
     const mappedRole = roleFromServer(resolvedRole);
+
+    if (expectedRole && mappedRole !== expectedRole) {
+      clearStoredAuth();
+      setAuth({
+        isAuthenticated: false,
+        userRole: "student",
+        userName: "",
+        userEmail: "",
+        token: null,
+      });
+      throw new Error("ROLE_MISMATCH");
+    }
 
     setStoredAuth({
       token: loginJson.token,
@@ -124,6 +190,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       userName: resolvedName,
       userRole: mappedRole,
     });
+
+    return mappedRole;
   };
 
   const signUpStudent = async (payload: SignUpStudentPayload) => {
@@ -140,7 +208,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     // After register, login so the rest of the app can access /projets endpoints.
-    await signIn(payload.email, payload.password);
+    await signIn(payload.email, payload.password, "student");
   };
 
   const signUpOrganization = async (payload: SignUpOrganizationPayload) => {
@@ -157,7 +225,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logo: payload.logo,
     });
 
-    await signIn(payload.email, payload.password);
+    await signIn(payload.email, payload.password, "organization");
   };
 
   const logout = () => {

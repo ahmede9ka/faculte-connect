@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { StatusBadge } from '@/components/StatusBadge';
 import { ProgressBar } from '@/components/ProgressBar';
-import { fetchProjects } from '@/lib/api';
+import { fetchMyProjects } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { Project } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -16,20 +16,15 @@ export default function StudentProjectsPage() {
   const { userEmail } = useAuth();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [view, setView] = useState<'mine' | 'all'>('mine');
 
   const { data: projects = [], isLoading } = useQuery<Project[]>({
-    queryKey: ['projects'],
-    queryFn: fetchProjects,
+    queryKey: ['projects', 'mine'],
+    queryFn: fetchMyProjects,
   });
 
-  const myProjects = projects.filter(
-    p => p.chefDeProjet === userEmail || p.membres.some(m => m.userId === userEmail)
-  );
+  const myProjects = projects;
 
-  const source = view === 'mine' ? myProjects : projects;
-
-  const filtered = source.filter(p => {
+  const filtered = myProjects.filter(p => {
     const matchSearch = p.titre.toLowerCase().includes(search.toLowerCase());
     const matchStatus = statusFilter === 'all' || p.statut === statusFilter;
     return matchSearch && matchStatus;
@@ -47,22 +42,6 @@ export default function StudentProjectsPage() {
               <h1 className="font-display text-2xl font-bold">Projets</h1>
               <p className="text-sm text-muted-foreground">{myProjects.length} projet(s) auxquels vous participez</p>
             </div>
-          </div>
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant={view === 'mine' ? 'default' : 'outline'}
-              onClick={() => setView('mine')}
-            >
-              Mes projets
-            </Button>
-            <Button
-              size="sm"
-              variant={view === 'all' ? 'default' : 'outline'}
-              onClick={() => setView('all')}
-            >
-              Tous les projets
-            </Button>
           </div>
         </div>
 

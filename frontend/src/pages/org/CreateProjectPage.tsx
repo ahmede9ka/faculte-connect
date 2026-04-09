@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { DashboardLayout } from '@/components/DashboardLayout';
@@ -6,17 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { createProject } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { toast } from 'sonner';
 
-const categories = ['Web Development', 'Intelligence Artificielle', 'IoT', 'Développement Mobile', 'Cybersecurity', 'Data Science'];
-
 export default function CreateProjectPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { userEmail } = useAuth();
+  const { userEmail, userName } = useAuth();
 
   const [titre, setTitre] = useState('');
   const [description, setDescription] = useState('');
@@ -24,10 +21,22 @@ export default function CreateProjectPage() {
   const [deadline, setDeadline] = useState('');
   const [chefProjet, setChefProjet] = useState('');
 
+  useEffect(() => {
+    if (userName && organisation !== userName) {
+      setOrganisation(userName);
+    }
+  }, [userName, organisation]);
+
+  useEffect(() => {
+    if (userEmail && chefProjet !== userEmail) {
+      setChefProjet(userEmail);
+    }
+  }, [userEmail, chefProjet]);
+
   const createMutation = useMutation({
     mutationFn: createProject,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['projects', userName] });
       toast.success('Projet créé avec succès !');
       navigate('/projects');
     },
@@ -77,13 +86,8 @@ export default function CreateProjectPage() {
             />
           </div>
           <div className="space-y-2">
-            <Label>Catégorie</Label>
-            <Select value={organisation} onValueChange={setOrganisation}>
-              <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
-              <SelectContent>
-                {categories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <Label>Organisation</Label>
+            <Input value={organisation} readOnly />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -101,11 +105,7 @@ export default function CreateProjectPage() {
           </div>
           <div className="space-y-2">
             <Label>Chef de projet (Email)</Label>
-            <Input
-              placeholder="chef@example.com"
-              value={chefProjet}
-              onChange={(e) => setChefProjet(e.target.value)}
-            />
+            <Input value={chefProjet} readOnly />
           </div>
           <div className="space-y-2">
             <Label>Ressources (fichiers, liens)</Label>

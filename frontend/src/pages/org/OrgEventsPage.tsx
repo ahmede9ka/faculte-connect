@@ -1,7 +1,8 @@
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchEvents, deleteEvent } from '@/lib/api';
+import { fetchEventsByOrganizer, deleteEvent } from '@/lib/api';
 import { Event } from '@/lib/types';
+import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CalendarDays, MapPin, Users, Plus } from 'lucide-react';
@@ -10,16 +11,18 @@ import { toast } from 'sonner';
 
 export default function OrgEventsPage() {
   const queryClient = useQueryClient();
+  const { userEmail } = useAuth();
 
   const { data: events = [], isLoading } = useQuery<Event[]>({
-    queryKey: ['events'],
-    queryFn: fetchEvents,
+    queryKey: ['events', userEmail],
+    queryFn: () => fetchEventsByOrganizer(),
+    enabled: Boolean(userEmail),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteEvent(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['events'] });
+      queryClient.invalidateQueries({ queryKey: ['events', userEmail] });
       toast.success('Événement supprimé');
     },
     onError: () => toast.error('Erreur lors de la suppression'),

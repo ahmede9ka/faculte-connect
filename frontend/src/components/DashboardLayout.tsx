@@ -1,19 +1,56 @@
-import { ReactNode } from 'react';
+import { ReactNode, useEffect } from 'react';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { Bell } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getUnreadNotificationCount } from '@/lib/api';
+import { toast } from 'sonner';
 
 export function DashboardLayout({ children }: { children: ReactNode }) {
-  const { userName } = useAuth();
+  const { userName, userEmail } = useAuth();
+  const queryClient = useQueryClient();
   const { data: unreadCount = 0 } = useQuery<number>({
     queryKey: ['unreadCount'],
     queryFn: getUnreadNotificationCount,
     refetchInterval: 30000, // Refetch every 30 seconds
   });
+
+  useEffect(() => {
+    if (!userEmail) return;
+
+    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    const host = window.location.hostname || 'localhost';
+    const wsUrl = `${protocol}://${host}:8084/ws/notifications?email=${encodeURIComponent(userEmail)}`;
+    const socket = new WebSocket(wsUrl);
+
+    socket.onmessage = (event) => {
+      try {
+        const payload = JSON.parse(event.data as string) as { type?: string; titre?: string; message?: string };
+        if (payload.type !== 'connected') {
+          if (payload.titre || payload.message) {
+            toast(payload.titre || 'Nouvelle notification', {
+              description: payload.message || undefined,
+            });
+          }
+          queryClient.invalidateQueries({ queryKey: ['notifications'] });
+          queryClient.invalidateQueries({ queryKey: ['unreadCount'] });
+        }
+      } catch {
+        queryClient.invalidateQueries({ queryKey: ['notifications'] });
+        queryClient.invalidateQueries({ queryKey: ['unreadCount'] });
+      }
+    };
+
+    socket.onerror = () => {
+      // Keep silent to avoid noisy UI errors
+    };
+
+    return () => {
+      socket.close();
+    };
+  }, [userEmail, queryClient]);
 
   return (
     <SidebarProvider>

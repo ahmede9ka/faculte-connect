@@ -1,15 +1,24 @@
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { StatCard } from '@/components/StatCard';
 import { useQuery } from '@tanstack/react-query';
-import { fetchProjects, fetchEvents, fetchMembers } from '@/lib/api';
-import { Project, Event, ProjectMember } from '@/lib/types';
+import { fetchEventsByOrganizer, fetchProjectsByOrganisation } from '@/lib/api';
+import { Project, Event } from '@/lib/types';
 import { BarChart3, Users, FolderKanban, CalendarDays, TrendingUp } from 'lucide-react';
 import { ProgressBar } from '@/components/ProgressBar';
+import { useAuth } from '@/lib/auth-context';
 
 export default function OrgStatisticsPage() {
-  const { data: projects = [] } = useQuery<Project[]>({ queryKey: ['projects'], queryFn: fetchProjects });
-  const { data: events = [] } = useQuery<Event[]>({ queryKey: ['events'], queryFn: fetchEvents });
-  const { data: members = [] } = useQuery<ProjectMember[]>({ queryKey: ['members'], queryFn: fetchMembers });
+  const { userName, userEmail } = useAuth();
+  const { data: projects = [] } = useQuery<Project[]>({
+    queryKey: ['projects', 'org', userName],
+    queryFn: () => fetchProjectsByOrganisation(userName),
+    enabled: Boolean(userName),
+  });
+  const { data: events = [] } = useQuery<Event[]>({
+    queryKey: ['events', 'org', userEmail],
+    queryFn: () => fetchEventsByOrganizer(),
+    enabled: Boolean(userEmail),
+  });
 
   const totalMembers = projects.reduce((acc, p) => acc + p.membres.length, 0);
   const avgProgress = projects.length > 0

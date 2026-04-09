@@ -16,6 +16,7 @@ import java.util.stream.Collectors;
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
+    private final tn.fst.notificationservice.websocket.NotificationWebSocketService webSocketService;
 
     public NotificationResponse create(NotificationRequest request) {
         Notification notification = Notification.builder()
@@ -30,7 +31,9 @@ public class NotificationService {
                 .build();
 
         Notification saved = notificationRepository.save(notification);
-        return toResponse(saved);
+        NotificationResponse response = toResponse(saved);
+        webSocketService.sendToUser(response.getUserId(), response);
+        return response;
     }
 
     public List<NotificationResponse> getByUserId(String userId) {

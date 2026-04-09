@@ -43,6 +43,7 @@ export interface Project {
   progression: number;
   membres: ProjectMember[];
   ressources: { nom: string; lien: string }[];
+  taches?: Task[];
 }
 
 export interface ProjectMember {

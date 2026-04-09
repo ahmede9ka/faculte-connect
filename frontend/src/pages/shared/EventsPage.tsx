@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchEvents, participateInEvent, cancelEventParticipation, deleteEvent } from '@/lib/api';
+import { fetchEvents, fetchEventsByOrganizer, participateInEvent, cancelEventParticipation, deleteEvent } from '@/lib/api';
 import { Event } from '@/lib/types';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
@@ -16,8 +16,9 @@ export default function EventsPage() {
   const queryClient = useQueryClient();
 
   const { data: events = [], isLoading } = useQuery<Event[]>({
-    queryKey: ['events'],
-    queryFn: fetchEvents
+    queryKey: ['events', userRole, userEmail],
+    queryFn: () => (userRole === 'organization' ? fetchEventsByOrganizer() : fetchEvents()),
+    enabled: userRole !== 'organization' || Boolean(userEmail),
   });
 
   const participateMutation = useMutation({

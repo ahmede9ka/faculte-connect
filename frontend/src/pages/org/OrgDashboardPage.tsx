@@ -4,14 +4,26 @@ import { StatCard } from '@/components/StatCard';
 import { ProgressBar } from '@/components/ProgressBar';
 import { StatusBadge } from '@/components/StatusBadge';
 import { useQuery } from '@tanstack/react-query';
-import { fetchProjects, fetchEvents } from '@/lib/api';
+import { fetchEventsByOrganizer, fetchProjectsByOrganisation } from '@/lib/api';
 import { Project, Event } from '@/lib/types';
 import { FolderKanban, ListTodo, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/lib/auth-context';
 
 export default function OrgDashboardPage() {
-  const { data: projects = [] } = useQuery<Project[]>({ queryKey: ['projects'], queryFn: fetchProjects });
-  const { data: events = [] } = useQuery<Event[]>({ queryKey: ['events'], queryFn: fetchEvents });
+  const { userName, userEmail } = useAuth();
+
+  const { data: projects = [] } = useQuery<Project[]>({
+    queryKey: ['projects', userName],
+    queryFn: () => fetchProjectsByOrganisation(userName),
+    enabled: Boolean(userName),
+  });
+
+  const { data: events = [] } = useQuery<Event[]>({
+    queryKey: ['events', userEmail],
+    queryFn: () => fetchEventsByOrganizer(),
+    enabled: Boolean(userEmail),
+  });
 
   const planned = projects.filter(p => p.statut === 'Planifié').length;
   const inProgress = projects.filter(p => p.statut === 'En cours').length;

@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
+import { UserRole } from "@/lib/types";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
 import NotFound from "./pages/NotFound";
@@ -49,6 +50,19 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function RoleProtectedRoute({
+  allowed,
+  children,
+}: {
+  allowed: UserRole[];
+  children: React.ReactNode;
+}) {
+  const { isAuthenticated, userRole } = useAuth();
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!allowed.includes(userRole)) return <Navigate to="/dashboard" replace />;
+  return <>{children}</>;
+}
+
 function AppRoutes() {
   return (
     <Routes>
@@ -57,37 +71,37 @@ function AppRoutes() {
       <Route path="/signup/student" element={<SignupStudentPage />} />
       <Route path="/signup/organization" element={<SignupOrgPage />} />
       <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
-      <Route path="/dashboard/student" element={<ProtectedRoute><StudentDashboardPage /></ProtectedRoute>} />
-      <Route path="/dashboard/organization" element={<ProtectedRoute><OrgDashboardPage /></ProtectedRoute>} />
-      <Route path="/dashboard/admin" element={<ProtectedRoute><AdminDashboardPage /></ProtectedRoute>} />
+      <Route path="/dashboard/student" element={<RoleProtectedRoute allowed={["student"]}><StudentDashboardPage /></RoleProtectedRoute>} />
+      <Route path="/dashboard/organization" element={<RoleProtectedRoute allowed={["organization"]}><OrgDashboardPage /></RoleProtectedRoute>} />
+      <Route path="/dashboard/admin" element={<RoleProtectedRoute allowed={["admin"]}><AdminDashboardPage /></RoleProtectedRoute>} />
       <Route path="/projects" element={<ProtectedRoute><ProjectsListPage /></ProtectedRoute>} />
-      <Route path="/projects/create" element={<ProtectedRoute><CreateProjectPage /></ProtectedRoute>} />
+      <Route path="/projects/create" element={<RoleProtectedRoute allowed={["organization"]}><CreateProjectPage /></RoleProtectedRoute>} />
       <Route path="/projects/:id" element={<ProtectedRoute><ProjectDetailsPage /></ProtectedRoute>} />
       <Route path="/tasks" element={<ProtectedRoute><TasksPage /></ProtectedRoute>} />
       <Route path="/events" element={<ProtectedRoute><EventsPage /></ProtectedRoute>} />
-      <Route path="/events/create" element={<ProtectedRoute><CreateEventPage /></ProtectedRoute>} />
+      <Route path="/events/create" element={<RoleProtectedRoute allowed={["organization"]}><CreateEventPage /></RoleProtectedRoute>} />
       <Route path="/statistics" element={<ProtectedRoute><StatisticsPage /></ProtectedRoute>} />
       <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
       <Route path="/recommendations" element={<ProtectedRoute><RecommendationsPage /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
       <Route path="/profile/edit" element={<ProtectedRoute><EditProfilePage /></ProtectedRoute>} />
       <Route path="/members" element={<ProtectedRoute><MembersPage /></ProtectedRoute>} />
-      <Route path="/admin/students" element={<ProtectedRoute><AdminStudentsPage /></ProtectedRoute>} />
-      <Route path="/admin/organizations" element={<ProtectedRoute><AdminOrganizationsPage /></ProtectedRoute>} />
+      <Route path="/admin/students" element={<RoleProtectedRoute allowed={["admin"]}><AdminStudentsPage /></RoleProtectedRoute>} />
+      <Route path="/admin/organizations" element={<RoleProtectedRoute allowed={["admin"]}><AdminOrganizationsPage /></RoleProtectedRoute>} />
       {/* Student-specific routes */}
-      <Route path="/student/projects" element={<ProtectedRoute><StudentProjectsPage /></ProtectedRoute>} />
-      <Route path="/student/tasks" element={<ProtectedRoute><TasksPage /></ProtectedRoute>} />
-      <Route path="/student/events" element={<ProtectedRoute><StudentEventsPage /></ProtectedRoute>} />
-      <Route path="/student/recommendations" element={<ProtectedRoute><RecommendationsPage /></ProtectedRoute>} />
-      <Route path="/student/notifications" element={<ProtectedRoute><StudentNotificationsPage /></ProtectedRoute>} />
-      <Route path="/student/profile" element={<ProtectedRoute><StudentProfilePage /></ProtectedRoute>} />
+      <Route path="/student/projects" element={<RoleProtectedRoute allowed={["student"]}><StudentProjectsPage /></RoleProtectedRoute>} />
+      <Route path="/student/tasks" element={<RoleProtectedRoute allowed={["student"]}><TasksPage /></RoleProtectedRoute>} />
+      <Route path="/student/events" element={<RoleProtectedRoute allowed={["student"]}><StudentEventsPage /></RoleProtectedRoute>} />
+      <Route path="/student/recommendations" element={<RoleProtectedRoute allowed={["student"]}><RecommendationsPage /></RoleProtectedRoute>} />
+      <Route path="/student/notifications" element={<RoleProtectedRoute allowed={["student"]}><StudentNotificationsPage /></RoleProtectedRoute>} />
+      <Route path="/student/profile" element={<RoleProtectedRoute allowed={["student"]}><StudentProfilePage /></RoleProtectedRoute>} />
       {/* Org-specific routes */}
-      <Route path="/org/projects" element={<ProtectedRoute><OrgProjectsPage /></ProtectedRoute>} />
-      <Route path="/org/events" element={<ProtectedRoute><OrgEventsPage /></ProtectedRoute>} />
-      <Route path="/org/members" element={<ProtectedRoute><MembersPage /></ProtectedRoute>} />
-      <Route path="/org/statistics" element={<ProtectedRoute><OrgStatisticsPage /></ProtectedRoute>} />
-      <Route path="/org/notifications" element={<ProtectedRoute><OrgNotificationsPage /></ProtectedRoute>} />
-      <Route path="/org/profile" element={<ProtectedRoute><OrgProfilePage /></ProtectedRoute>} />
+      <Route path="/org/projects" element={<RoleProtectedRoute allowed={["organization"]}><OrgProjectsPage /></RoleProtectedRoute>} />
+      <Route path="/org/events" element={<RoleProtectedRoute allowed={["organization"]}><OrgEventsPage /></RoleProtectedRoute>} />
+      <Route path="/org/members" element={<RoleProtectedRoute allowed={["organization"]}><MembersPage /></RoleProtectedRoute>} />
+      <Route path="/org/statistics" element={<RoleProtectedRoute allowed={["organization"]}><OrgStatisticsPage /></RoleProtectedRoute>} />
+      <Route path="/org/notifications" element={<RoleProtectedRoute allowed={["organization"]}><OrgNotificationsPage /></RoleProtectedRoute>} />
+      <Route path="/org/profile" element={<RoleProtectedRoute allowed={["organization"]}><OrgProfilePage /></RoleProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

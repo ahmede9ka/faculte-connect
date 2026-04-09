@@ -3,20 +3,85 @@ import { useParams, Link } from 'react-router-dom';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { StatusBadge, PriorityBadge } from '@/components/StatusBadge';
 import { ProgressBar } from '@/components/ProgressBar';
-import { useQuery } from '@tanstack/react-query';
-import { fetchProjects, fetchTasks, fetchMembers } from '@/lib/api';
-import { Project, Task, ProjectMember } from '@/lib/types';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { addTask, addTaskMembers, fetchMyProjects, fetchProjects, fetchProjectsByOrganisation, fetchTasks } from '@/lib/api';
+import { Project, Task } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Plus, User, Calendar, FileText, AlertTriangle, Clock } from 'lucide-react';
+import { useAuth } from '@/lib/auth-context';
+import { toast } from 'sonner';
 
 export default function ProjectDetailsPage() {
   const { id } = useParams();
-  const { data: projects = [], isLoading: isLoadingProjects } = useQuery<Project[]>({ queryKey: ['projects'], queryFn: fetchProjects });
+  const { userRole, userName, userEmail } = useAuth();
+  const queryClient = useQueryClient();
+  const [taskTitle, setTaskTitle] = useState('');
+  const [taskDescription, setTaskDescription] = useState('');
+  const [taskDeadline, setTaskDeadline] = useState('');
+  const [taskMembers, setTaskMembers] = useState('');
+  const [addOpen, setAddOpen] = useState(false);
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [assignTaskId, setAssignTaskId] = useState<string | null>(null);
+  const [assignEmails, setAssignEmails] = useState('');
+  const { data: projects = [], isLoading: isLoadingProjects } = useQuery<Project[]>({
+    queryKey: ['projects', 'details', userRole, userName],
+    queryFn: () => {
+      if (userRole === 'organization') return fetchProjectsByOrganisation(userName);
+      if (userRole === 'student') return fetchMyProjects();
+      return fetchProjects();
+    },
+    enabled: userRole !== 'organization' || Boolean(userName),
+  });
   const { data: tasksData = [], isLoading: isLoadingTasks } = useQuery<Task[]>({ queryKey: ['tasks'], queryFn: fetchTasks });
 
   const project = projects.find(p => p.id === id);
-  const tasks = tasksData.filter(t => t.projectId === project?.id);
+  const tasks = userRole === 'organization' || userRole === 'admin'
+    ? (project?.taches ?? [])
+    : tasksData.filter(t => t.projectId === project?.id);
+
+  const addTaskMutation = useMutation({
+    mutationFn: (payload: {
+      projetId: string;
+      titre: string;
+      description: string;
+      echeance?: string;
+      membresEmails: string[];
+    }) => addTask(payload.projetId, {
+      titre: payload.titre,
+      description: payload.description,
+      echeance: payload.echeance,
+      membresEmails: payload.membresEmails,
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['projects', 'details', userRole, userName] });
+      toast.success('Tache ajoutee');
+      setTaskTitle('');
+      setTaskDescription('');
+      setTaskDeadline('');
+      setTaskMembers('');
+      setAddOpen(false);
+    },
+    onError: () => toast.error('Impossible d\'ajouter la tache'),
+  });
+
+  const assignMutation = useMutation({
+    mutationFn: ({ projetId, tacheId, emails }: { projetId: string; tacheId: string; emails: string[] }) =>
+      addTaskMembers(projetId, tacheId, emails),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      toast.success('Membres assignes');
+      setAssignEmails('');
+      setAssignTaskId(null);
+      setAssignOpen(false);
+    },
+    onError: () => toast.error('Impossible d\'assigner les membres'),
+  });
 
   if (isLoadingProjects) return <DashboardLayout><div className="p-8 text-center text-muted-foreground">Chargement du projet...</div></DashboardLayout>;
   if (!project) return <DashboardLayout><div className="p-8 text-center text-destructive">Projet non trouvé</div></DashboardLayout>;
@@ -24,6 +89,44 @@ export default function ProjectDetailsPage() {
   const isLate = project.statut === 'En Retard';
   const deadlineDate = new Date(project.dateFin);
   const daysLeft = Math.ceil((deadlineDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+
+  const handleAddTask = () => {
+    if (!project?.id) return;
+    if (!taskTitle.trim() || !taskDescription.trim()) {
+      toast.error('Titre et description requis');
+      return;
+    }
+    const emails = taskMembers
+      .split(',')
+      .map((e) => e.trim())
+      .filter(Boolean);
+    if (userEmail && !emails.includes(userEmail)) {
+      emails.push(userEmail);
+    }
+    addTaskMutation.mutate({
+      projetId: project.id,
+      titre: taskTitle.trim(),
+      description: taskDescription.trim(),
+      echeance: taskDeadline || undefined,
+      membresEmails: emails,
+    });
+  };
+
+  const handleAssignMembers = () => {
+    if (!project?.id || !assignTaskId) return;
+    const emails = assignEmails
+      .split(',')
+      .map((e) => e.trim())
+      .filter(Boolean);
+    if (emails.length === 0) {
+      toast.error('Ajoutez au moins un email');
+      return;
+    }
+    if (userEmail && !emails.includes(userEmail)) {
+      emails.push(userEmail);
+    }
+    assignMutation.mutate({ projetId: project.id, tacheId: assignTaskId, emails });
+  };
 
   return (
     <DashboardLayout>
@@ -103,7 +206,55 @@ export default function ProjectDetailsPage() {
             <div className="bg-card rounded-xl border overflow-hidden">
               <div className="p-4 border-b flex items-center justify-between">
                 <h3 className="font-medium">Tâches</h3>
-                <Button size="sm" className="gap-1"><Plus className="h-3.5 w-3.5" /> Ajouter une tâche</Button>
+                <Dialog open={addOpen} onOpenChange={setAddOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" className="gap-1"><Plus className="h-3.5 w-3.5" /> Ajouter une tâche</Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Ajouter une tâche</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Titre</Label>
+                        <Input
+                          value={taskTitle}
+                          onChange={(e) => setTaskTitle(e.target.value)}
+                          placeholder="Titre de la tache"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Description</Label>
+                        <Textarea
+                          value={taskDescription}
+                          onChange={(e) => setTaskDescription(e.target.value)}
+                          placeholder="Description de la tache"
+                          rows={4}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Deadline</Label>
+                        <Input
+                          type="date"
+                          value={taskDeadline}
+                          onChange={(e) => setTaskDeadline(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Membres (emails separes par des virgules)</Label>
+                        <Input
+                          value={taskMembers}
+                          onChange={(e) => setTaskMembers(e.target.value)}
+                          placeholder="m1@exemple.com, m2@exemple.com"
+                        />
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" onClick={() => setAddOpen(false)}>Annuler</Button>
+                        <Button onClick={handleAddTask} disabled={addTaskMutation.isPending}>Ajouter</Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </div>
               <table className="w-full">
                 <thead>
@@ -113,6 +264,7 @@ export default function ProjectDetailsPage() {
                     <th className="text-left px-5 py-3 text-xs font-medium text-muted-foreground">Deadline</th>
                     <th className="text-left px-5 py-3 text-xs font-medium text-muted-foreground">Priorité</th>
                     <th className="text-left px-5 py-3 text-xs font-medium text-muted-foreground">Statut</th>
+                    <th className="text-right px-5 py-3 text-xs font-medium text-muted-foreground">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -123,6 +275,47 @@ export default function ProjectDetailsPage() {
                       <td className="px-5 py-3 text-sm text-muted-foreground">{t.deadline}</td>
                       <td className="px-5 py-3"><PriorityBadge priority={t.priorite} /></td>
                       <td className="px-5 py-3"><StatusBadge status={t.statut} /></td>
+                      <td className="px-5 py-3 text-right">
+                        <Dialog open={assignOpen && assignTaskId === t.id} onOpenChange={(open) => {
+                          setAssignOpen(open);
+                          if (!open) {
+                            setAssignTaskId(null);
+                            setAssignEmails('');
+                          }
+                        }}>
+                          <DialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setAssignTaskId(t.id);
+                                setAssignEmails('');
+                              }}
+                            >
+                              Assigner
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Assigner des membres</DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              <div className="space-y-2">
+                                <Label>Emails (separes par des virgules)</Label>
+                                <Input
+                                  value={assignEmails}
+                                  onChange={(e) => setAssignEmails(e.target.value)}
+                                  placeholder="m1@exemple.com, m2@exemple.com"
+                                />
+                              </div>
+                              <div className="flex justify-end gap-2">
+                                <Button variant="outline" onClick={() => setAssignOpen(false)}>Annuler</Button>
+                                <Button onClick={handleAssignMembers} disabled={assignMutation.isPending}>Assigner</Button>
+                              </div>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
