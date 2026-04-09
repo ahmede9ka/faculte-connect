@@ -1,11 +1,8 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/lib/auth-context';
 import { GraduationCap, FolderKanban, CalendarDays, Users, BarChart3, ArrowRight, ShieldCheck } from 'lucide-react';
 
 export default function LandingPage() {
-  const { login } = useAuth();
-
   const features = [
     { icon: FolderKanban, title: 'Suivi de projet', desc: 'Gérez vos projets de A à Z avec suivi en temps réel' },
     { icon: CalendarDays, title: 'Événements', desc: 'Organisez et participez aux événements du campus' },
