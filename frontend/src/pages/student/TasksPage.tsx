@@ -14,6 +14,28 @@ import { Clock } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { toast } from 'sonner';
 
+function getDeadlineAlert(deadline?: string) {
+  if (!deadline) return null;
+  const date = new Date(deadline);
+  if (Number.isNaN(date.getTime())) return null;
+
+  const today = new Date();
+  const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const startOfDeadline = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const diffDays = Math.ceil((startOfDeadline.getTime() - startOfToday.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 0) {
+    return { label: 'En retard', className: 'bg-destructive/10 text-destructive border border-destructive/20' };
+  }
+  if (diffDays === 0) {
+    return { label: "Aujourd'hui", className: 'bg-warning/10 text-warning border border-warning/20' };
+  }
+  if (diffDays <= 3) {
+    return { label: `Dans ${diffDays}j`, className: 'bg-warning/10 text-warning border border-warning/20' };
+  }
+  return null;
+}
+
 export default function TasksPage() {
   const { userEmail } = useAuth();
   const [statusFilter, setStatusFilter] = useState('all');
@@ -123,6 +145,11 @@ export default function TasksPage() {
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Clock className="h-3 w-3" />
                     <span>Deadline: {t.deadline}</span>
+                    {getDeadlineAlert(t.deadline) && (
+                      <span className={`ml-2 px-2 py-0.5 rounded-full text-[10px] font-medium ${getDeadlineAlert(t.deadline)!.className}`}>
+                        {getDeadlineAlert(t.deadline)!.label}
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className="mt-4 space-y-3 rounded-lg border bg-muted/30 p-3">

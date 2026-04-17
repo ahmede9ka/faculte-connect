@@ -217,6 +217,7 @@ function mapTask(t: TacheRaw, projectId: string): Task {
     description: asString(t.description),
     assigneA: primaryAssignee,
     assigneNom: primaryAssignee,
+    membresEmails,
     // Backend Tache entity has no dateDebut field
     dateDebut: "",
     deadline: t.echeance ? asString(t.echeance) : "",

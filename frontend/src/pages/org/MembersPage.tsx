@@ -13,6 +13,22 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Plus, User, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
+function isTaskLate(taskDeadline?: string, status?: string, progression?: number) {
+  if (!taskDeadline) return false;
+  if (status === 'Terminée' || (progression ?? 0) >= 100) return false;
+  const deadline = new Date(taskDeadline);
+  if (Number.isNaN(deadline.getTime())) return false;
+  const today = new Date();
+  const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const startOfDeadline = new Date(deadline.getFullYear(), deadline.getMonth(), deadline.getDate());
+  return startOfDeadline.getTime() < startOfToday.getTime();
+}
+
+function clampPercent(value: number) {
+  if (Number.isNaN(value)) return 0;
+  return Math.max(0, Math.min(100, value));
+}
+
 export default function MembersPage() {
   const { userName } = useAuth();
   const queryClient = useQueryClient();
@@ -51,6 +67,36 @@ export default function MembersPage() {
       role: m.email === selectedProject.chefDeProjet ? 'Chef' : 'Membre actif',
     }));
   }, [selectedProject]);
+
+  const memberStats = useMemo(() => {
+    if (!selectedProject) return [];
+    const tasks = selectedProject.taches ?? [];
+
+    return members.map((member) => {
+      const memberTasks = tasks.filter((task) => {
+        const membersEmails = task.membresEmails ?? [];
+        return membersEmails.includes(member.email) || task.assigneA === member.email;
+      });
+
+      const total = memberTasks.length;
+      const completed = memberTasks.filter((t) => t.statut === 'Terminée' || (t.progression ?? 0) >= 100).length;
+      const late = memberTasks.filter((t) => isTaskLate(t.deadline, t.statut, t.progression)).length;
+      const avgProgress = total === 0
+        ? 0
+        : Math.round(memberTasks.reduce((sum, t) => sum + (t.progression ?? 0), 0) / total);
+
+      return {
+        email: member.email,
+        name: member.nom,
+        total,
+        completed,
+        late,
+        avgProgress,
+        completionRate: total === 0 ? 0 : Math.round((completed / total) * 100),
+        lateRate: total === 0 ? 0 : Math.round((late / total) * 100),
+      };
+    });
+  }, [members, selectedProject]);
 
   const addMutation = useMutation({
     mutationFn: (email: string) => addProjectMember(selectedProjectId, email),
@@ -249,7 +295,7 @@ export default function MembersPage() {
                           disabled={isChef}
                           onClick={() => handleDelete(m.email)}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-4 w-4 mr-1" /> Bannir
                         </Button>
                       </div>
                     </div>
@@ -259,6 +305,68 @@ export default function MembersPage() {
             </div>
           )}
         </div>
+
+        {selectedProject && memberStats.length > 0 && (
+          <div className="bg-card rounded-xl border overflow-hidden">
+            <div className="p-4 border-b">
+              <h2 className="font-medium">Performance des membres</h2>
+            </div>
+            <div className="divide-y">
+              {memberStats.map((stat) => (
+                <div key={stat.email} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
+                  <div>
+                    <p className="text-sm font-medium">{stat.name}</p>
+                    <p className="text-xs text-muted-foreground">{stat.email}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2 text-xs">
+                    <Badge variant="outline">Tâches: {stat.total}</Badge>
+                    <Badge variant="outline">Terminées: {stat.completed}</Badge>
+                    <Badge variant="outline">Retard: {stat.late}</Badge>
+                    <Badge variant="outline">Progression: {stat.avgProgress}%</Badge>
+                  </div>
+                  <div className="w-full sm:w-[360px] space-y-2 text-xs">
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Taux de completion</span>
+                        <span className="font-medium">{stat.completionRate}%</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-muted overflow-hidden">
+                        <div
+                          className="h-full bg-success"
+                          style={{ width: `${clampPercent(stat.completionRate)}%` }}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Taux de retard</span>
+                        <span className="font-medium">{stat.lateRate}%</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-muted overflow-hidden">
+                        <div
+                          className="h-full bg-destructive"
+                          style={{ width: `${clampPercent(stat.lateRate)}%` }}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Progression moyenne</span>
+                        <span className="font-medium">{stat.avgProgress}%</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-muted overflow-hidden">
+                        <div
+                          className="h-full bg-primary"
+                          style={{ width: `${clampPercent(stat.avgProgress)}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );

@@ -61,6 +61,7 @@ export interface Task {
   description: string;
   assigneA: string;
   assigneNom: string;
+  membresEmails?: string[];
   dateDebut: string;
   deadline: string;
   priorite: 'Low' | 'Medium' | 'High';
