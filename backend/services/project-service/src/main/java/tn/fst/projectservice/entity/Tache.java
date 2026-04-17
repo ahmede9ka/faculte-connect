@@ -6,7 +6,11 @@ import org.springframework.data.annotation.Id;
 import java.time.LocalDate;
 import java.util.List;
 
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Tache {
     @Id
     private String id;
@@ -14,6 +18,7 @@ public class Tache {
     private String description;
     private StatusProjet status;
     private LocalDate echeance;
-    private int progression;             // 0-100%
-    private List<String> membresEmails;  // multiple assigned members
+    private int progression; // 0-100%
+    private String commentaire;
+    private List<String> membresEmails; // multiple assigned members
 }

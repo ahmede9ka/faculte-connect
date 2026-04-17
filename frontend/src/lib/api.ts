@@ -32,6 +32,7 @@ type TacheRaw = {
   echeance?: unknown;
   status?: unknown;
   progression?: unknown;
+  commentaire?: unknown;
   // FIX: backend Tache has membresEmails (List<String>), not a single assignee
   membresEmails?: unknown;
 };
@@ -222,6 +223,8 @@ function mapTask(t: TacheRaw, projectId: string): Task {
     // Backend TacheRequest has no priorite field; default to Low
     priorite: "Low",
     statut: mapTaskStatus(asString(t.status)),
+    progression: asNumber(t.progression),
+    commentaire: asString(t.commentaire),
     projectId,
     // Expose the full list for components that need it
     //membresEmails,
@@ -538,7 +541,8 @@ export const updateTask = async (
     status?: string;
     echeance?: string;
     progression?: number;
-    membresEmails: string[];
+    commentaire?: string;
+    membresEmails?: string[];
   }
 ): Promise<Project> => {
   const payload = {
@@ -547,7 +551,8 @@ export const updateTask = async (
     status: taskData.status ?? "EN_ATTENTE",
     echeance: taskData.echeance ?? null,
     progression: taskData.progression ?? 0,
-    membresEmails: taskData.membresEmails,
+    commentaire: taskData.commentaire ?? "",
+    membresEmails: taskData.membresEmails ?? [],
   };
 
   const projetRaw = await apiJson<ProjetRaw>(

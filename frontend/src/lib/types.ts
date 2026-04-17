@@ -65,6 +65,8 @@ export interface Task {
   deadline: string;
   priorite: 'Low' | 'Medium' | 'High';
   statut: 'Non commencée' | 'En cours' | 'Terminée' | 'En retard';
+  progression: number;
+  commentaire?: string;
   projectId: string;
 }
 

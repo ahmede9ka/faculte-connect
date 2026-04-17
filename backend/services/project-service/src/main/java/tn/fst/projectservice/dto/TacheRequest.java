@@ -13,5 +13,6 @@ public class TacheRequest {
     private StatusProjet status;
     private LocalDate echeance;
     private int progression;
+    private String commentaire;
     private List<String> membresEmails;
 }

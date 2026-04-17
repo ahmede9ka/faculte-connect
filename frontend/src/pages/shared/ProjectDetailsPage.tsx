@@ -263,6 +263,7 @@ export default function ProjectDetailsPage() {
                     <th className="text-left px-5 py-3 text-xs font-medium text-muted-foreground">Assigné à</th>
                     <th className="text-left px-5 py-3 text-xs font-medium text-muted-foreground">Deadline</th>
                     <th className="text-left px-5 py-3 text-xs font-medium text-muted-foreground">Priorité</th>
+                    <th className="text-left px-5 py-3 text-xs font-medium text-muted-foreground">Progression</th>
                     <th className="text-left px-5 py-3 text-xs font-medium text-muted-foreground">Statut</th>
                     <th className="text-right px-5 py-3 text-xs font-medium text-muted-foreground">Actions</th>
                   </tr>
@@ -274,6 +275,12 @@ export default function ProjectDetailsPage() {
                       <td className="px-5 py-3 text-sm text-muted-foreground">{t.assigneNom}</td>
                       <td className="px-5 py-3 text-sm text-muted-foreground">{t.deadline}</td>
                       <td className="px-5 py-3"><PriorityBadge priority={t.priorite} /></td>
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-2">
+                          <ProgressBar value={t.progression ?? 0} className="w-24" />
+                          <span className="text-xs text-muted-foreground">{t.progression ?? 0}%</span>
+                        </div>
+                      </td>
                       <td className="px-5 py-3"><StatusBadge status={t.statut} /></td>
                       <td className="px-5 py-3 text-right">
                         <Dialog open={assignOpen && assignTaskId === t.id} onOpenChange={(open) => {

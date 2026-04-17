@@ -257,6 +257,7 @@ public class ProjetService {
                 .status(request.getStatus() != null ? request.getStatus() : StatusProjet.EN_ATTENTE)
                 .echeance(request.getEcheance())
                 .progression(request.getProgression())
+                .commentaire(request.getCommentaire() != null ? request.getCommentaire() : "")
                 .membresEmails(membresEmails)
                 .build();
 
@@ -282,6 +283,9 @@ public class ProjetService {
         tache.setStatus(request.getStatus());
         tache.setEcheance(request.getEcheance());
         tache.setProgression(request.getProgression());
+        if (request.getCommentaire() != null) {
+            tache.setCommentaire(request.getCommentaire());
+        }
 
         // recalculate project progression from tasks average
         int avgProgression = (int) projet.getTaches().stream()
