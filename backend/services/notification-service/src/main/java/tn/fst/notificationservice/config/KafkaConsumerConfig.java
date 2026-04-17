@@ -12,6 +12,7 @@ import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.kafka.support.serializer.JacksonJsonDeserializer; // ✅ new import
 import tn.fst.notificationservice.dto.TacheAssigneeEvent;
+import tn.fst.notificationservice.dto.TacheUpdateEvent;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -54,6 +55,31 @@ public class KafkaConsumerConfig {
     public ConcurrentKafkaListenerContainerFactory<String, TacheAssigneeEvent> kafkaListenerContainerFactory() {
         ConcurrentKafkaListenerContainerFactory<String, TacheAssigneeEvent> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory());
+        return factory;
+    }
+
+    @Bean
+    public ConsumerFactory<String, TacheUpdateEvent> tacheUpdateConsumerFactory() {
+        JacksonJsonDeserializer<TacheUpdateEvent> jsonDeserializer = new JacksonJsonDeserializer<>(
+                TacheUpdateEvent.class);
+        jsonDeserializer.trustedPackages("*");
+        jsonDeserializer.setUseTypeHeaders(false);
+
+        Map<String, Object> props = new HashMap<>();
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+
+        return new DefaultKafkaConsumerFactory<>(
+                props,
+                new StringDeserializer(),
+                new ErrorHandlingDeserializer<>(jsonDeserializer));
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, TacheUpdateEvent> tacheUpdateKafkaListenerContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, TacheUpdateEvent> factory = new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(tacheUpdateConsumerFactory());
         return factory;
     }
 }

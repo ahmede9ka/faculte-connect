@@ -11,9 +11,11 @@ import { Label } from '@/components/ui/label';
 import { ProgressBar } from '@/components/ProgressBar';
 import { useEffect, useState } from 'react';
 import { Clock } from 'lucide-react';
+import { useAuth } from '@/lib/auth-context';
 import { toast } from 'sonner';
 
 export default function TasksPage() {
+  const { userEmail } = useAuth();
   const [statusFilter, setStatusFilter] = useState('all');
   const [updates, setUpdates] = useState<Record<string, { note: string; percent: number }>>({});
   const queryClient = useQueryClient();
@@ -34,6 +36,7 @@ export default function TasksPage() {
         echeance: task.deadline || undefined,
         progression: percent,
         commentaire: note,
+        updatedByEmail: userEmail || undefined,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });

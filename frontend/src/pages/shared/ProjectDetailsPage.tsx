@@ -100,7 +100,7 @@ export default function ProjectDetailsPage() {
       .split(',')
       .map((e) => e.trim())
       .filter(Boolean);
-    if (userEmail && !emails.includes(userEmail)) {
+    if (userRole === 'student' && userEmail && !emails.includes(userEmail)) {
       emails.push(userEmail);
     }
     addTaskMutation.mutate({
@@ -122,7 +122,7 @@ export default function ProjectDetailsPage() {
       toast.error('Ajoutez au moins un email');
       return;
     }
-    if (userEmail && !emails.includes(userEmail)) {
+    if (userRole === 'student' && userEmail && !emails.includes(userEmail)) {
       emails.push(userEmail);
     }
     assignMutation.mutate({ projetId: project.id, tacheId: assignTaskId, emails });

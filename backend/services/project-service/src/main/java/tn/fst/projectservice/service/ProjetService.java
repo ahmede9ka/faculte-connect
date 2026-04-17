@@ -7,6 +7,7 @@ import tn.fst.projectservice.dto.ApprobationRequest;
 import tn.fst.projectservice.dto.ProjetRequest;
 import tn.fst.projectservice.dto.TacheRequest;
 import tn.fst.projectservice.dto.TacheAssigneeEvent;
+import tn.fst.projectservice.dto.TacheUpdateEvent;
 import tn.fst.projectservice.entity.*;
 import tn.fst.projectservice.kafka.TacheEventProducer;
 import tn.fst.projectservice.repository.ProjetRepository;
@@ -237,18 +238,19 @@ public class ProjetService {
     // ✅ Add task to project
     public Projet addTache(String projetId, TacheRequest request) {
         Projet projet = getById(projetId); // ✅ declare projet FIRST
+        ensureProjectCollections(projet);
 
-        if (projet.getMembres() == null) {
-            projet.setMembres(new ArrayList<>());
-        }
-        if (projet.getTaches() == null) {
-            projet.setTaches(new ArrayList<>());
-        }
-        if (projet.getAffectations() == null) {
-            projet.setAffectations(new HashMap<>());
-        }
+        List<String> membresEmails = request.getMembresEmails() != null
+                ? new ArrayList<>(request.getMembresEmails())
+                : new ArrayList<>();
 
-        List<String> membresEmails = new ArrayList<>();
+        List<String> validatedMembers = new ArrayList<>();
+        for (String email : membresEmails) {
+            validateMemberForProject(projet, email);
+            if (!validatedMembers.contains(email)) {
+                validatedMembers.add(email);
+            }
+        }
 
         Tache tache = Tache.builder()
                 .id(UUID.randomUUID().toString())
@@ -258,12 +260,20 @@ public class ProjetService {
                 .echeance(request.getEcheance())
                 .progression(request.getProgression())
                 .commentaire(request.getCommentaire() != null ? request.getCommentaire() : "")
-                .membresEmails(membresEmails)
+                .membresEmails(validatedMembers)
                 .build();
 
         projet.getTaches().add(tache);
 
-        return projetRepository.save(projet);
+        for (String email : validatedMembers) {
+            projet.getAffectations()
+                    .computeIfAbsent(email, k -> new ArrayList<>())
+                    .add(tache.getId());
+        }
+
+        Projet saved = projetRepository.save(projet);
+        publishAssigneeEventIfNeeded(saved, tache, validatedMembers);
+        return saved;
     }
 
     // ✅ Update task
@@ -298,7 +308,28 @@ public class ProjetService {
             projet.setStatus(StatusProjet.TERMINE);
         }
 
-        return projetRepository.save(projet);
+        Projet saved = projetRepository.save(projet);
+
+        String updatedBy = request.getUpdatedByEmail();
+        String orgEmail = projet.getOrganisation();
+        if (updatedBy != null && !updatedBy.isBlank()
+                && orgEmail != null && !orgEmail.isBlank()
+                && !updatedBy.equals(orgEmail)) {
+            TacheUpdateEvent event = TacheUpdateEvent.builder()
+                    .tacheId(tache.getId())
+                    .tacheTitre(tache.getTitre())
+                    .projetId(projet.getId())
+                    .projetNom(projet.getTitre())
+                    .updatedByEmail(updatedBy)
+                    .orgEmail(orgEmail)
+                    .progression(tache.getProgression())
+                    .status(tache.getStatus() != null ? tache.getStatus().name() : null)
+                    .commentaire(tache.getCommentaire())
+                    .build();
+            tacheEventProducer.publishTacheUpdated(event);
+        }
+
+        return saved;
     }
 
     // ✅ Delete task

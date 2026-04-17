@@ -1,5 +1,6 @@
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/lib/auth-context';
 import {
   fetchNotifications, markNotificationAsRead,
   markAllNotificationsAsRead, deleteNotification,
@@ -19,22 +20,28 @@ const typeColors = {
 };
 
 export default function StudentNotificationsPage() {
+  const { userEmail } = useAuth();
   const queryClient = useQueryClient();
 
   const { data: notifications = [], isLoading } = useQuery<Notification[]>({
-    queryKey: ['notifications'],
-    queryFn: fetchNotifications,
+    queryKey: ['notifications', userEmail],
+    queryFn: () => fetchNotifications(userEmail),
+    enabled: Boolean(userEmail),
   });
 
   const markAsReadMutation = useMutation({
     mutationFn: (id: string) => markNotificationAsRead(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notifications', 'unreadCount'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications', userEmail] });
+      queryClient.invalidateQueries({ queryKey: ['unreadCount', userEmail] });
+    },
   });
 
   const markAllMutation = useMutation({
-    mutationFn: markAllNotificationsAsRead,
+    mutationFn: () => markAllNotificationsAsRead(userEmail),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notifications', 'unreadCount'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications', userEmail] });
+      queryClient.invalidateQueries({ queryKey: ['unreadCount', userEmail] });
       toast.success('Toutes les notifications marquées comme lues');
     },
   });
@@ -42,7 +49,8 @@ export default function StudentNotificationsPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteNotification(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notifications', 'unreadCount'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications', userEmail] });
+      queryClient.invalidateQueries({ queryKey: ['unreadCount', userEmail] });
       toast.success('Notification supprimée');
     },
   });

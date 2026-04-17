@@ -543,6 +543,7 @@ export const updateTask = async (
     progression?: number;
     commentaire?: string;
     membresEmails?: string[];
+    updatedByEmail?: string;
   }
 ): Promise<Project> => {
   const payload = {
@@ -553,6 +554,7 @@ export const updateTask = async (
     progression: taskData.progression ?? 0,
     commentaire: taskData.commentaire ?? "",
     membresEmails: taskData.membresEmails ?? [],
+    updatedByEmail: taskData.updatedByEmail ?? "",
   };
 
   const projetRaw = await apiJson<ProjetRaw>(
@@ -763,8 +765,8 @@ function mapNotification(n: NotificationRaw): Notification {
   };
 }
 
-export const fetchNotifications = async (): Promise<Notification[]> => {
-  const email = getAuthEmail();
+export const fetchNotifications = async (emailOverride?: string): Promise<Notification[]> => {
+  const email = emailOverride || getAuthEmail();
   if (!email) return [];
 
   try {
@@ -777,8 +779,21 @@ export const fetchNotifications = async (): Promise<Notification[]> => {
   }
 };
 
-export const fetchUnreadNotifications = async (): Promise<Notification[]> => {
-  const email = getAuthEmail();
+export const fetchNotificationsForUsers = async (userIds: string[]): Promise<Notification[]> => {
+  const uniqueIds = Array.from(new Set(userIds.filter(Boolean)));
+  if (uniqueIds.length === 0) return [];
+
+  const results = await Promise.all(uniqueIds.map((id) => fetchNotifications(id)));
+  const merged = new Map<string, Notification>();
+  results.flat().forEach((notification) => {
+    merged.set(notification.id, notification);
+  });
+
+  return Array.from(merged.values());
+};
+
+export const fetchUnreadNotifications = async (emailOverride?: string): Promise<Notification[]> => {
+  const email = emailOverride || getAuthEmail();
   if (!email) return [];
 
   try {
@@ -791,8 +806,8 @@ export const fetchUnreadNotifications = async (): Promise<Notification[]> => {
   }
 };
 
-export const getUnreadNotificationCount = async (): Promise<number> => {
-  const email = getAuthEmail();
+export const getUnreadNotificationCount = async (emailOverride?: string): Promise<number> => {
+  const email = emailOverride || getAuthEmail();
   if (!email) return 0;
 
   try {
@@ -813,8 +828,8 @@ export const markNotificationAsRead = async (id: string): Promise<void> => {
 };
 
 // FIX: PATCH /notifications/user/{email}/read-all returns 204 — safe with updated apiJson.
-export const markAllNotificationsAsRead = async (): Promise<void> => {
-  const email = getAuthEmail();
+export const markAllNotificationsAsRead = async (emailOverride?: string): Promise<void> => {
+  const email = emailOverride || getAuthEmail();
   if (!email) return;
 
   await apiJson<void>(`/notifications/user/${encodeURIComponent(email)}/read-all`, {
@@ -830,17 +845,25 @@ export const deleteNotification = async (id: string): Promise<void> => {
 };
 
 export const createNotification = async (notificationData: {
-  userId: string;
+  userId?: string;
   titre: string;
   message: string;
   type: "INFO" | "SUCCESS" | "WARNING" | "ERROR";
   relatedEntityType?: string;
   relatedEntityId?: string;
 }): Promise<Notification> => {
+  const resolvedUserId = notificationData.userId || getAuthEmail();
+  if (!resolvedUserId) {
+    throw new Error("Missing user email for notification");
+  }
+
   const notificationRaw = await apiJson<NotificationRaw>(`/notifications`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(notificationData),
+    body: JSON.stringify({
+      ...notificationData,
+      userId: resolvedUserId,
+    }),
   });
   return mapNotification(notificationRaw);
 };

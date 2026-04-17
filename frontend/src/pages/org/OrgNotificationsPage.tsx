@@ -1,7 +1,8 @@
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/lib/auth-context';
 import {
-  fetchNotifications, markNotificationAsRead,
+  fetchNotificationsForUsers, markNotificationAsRead,
   markAllNotificationsAsRead, deleteNotification,
 } from '@/lib/api';
 import { Notification } from '@/lib/types';
@@ -19,24 +20,33 @@ const typeColors = {
 };
 
 export default function OrgNotificationsPage() {
+  const { userEmail, userName } = useAuth();
+  const notificationsUserId = userName || userEmail;
+  const notificationsUserIds = [userName, userEmail].filter(Boolean);
   const queryClient = useQueryClient();
 
   const { data: notifications = [], isLoading } = useQuery<Notification[]>({
-    queryKey: ['notifications'],
-    queryFn: fetchNotifications,
+    queryKey: ['notifications', ...notificationsUserIds],
+    queryFn: () => fetchNotificationsForUsers(notificationsUserIds),
+    enabled: Boolean(notificationsUserId),
   });
 
   const markAsReadMutation = useMutation({
     mutationFn: (id: string) => markNotificationAsRead(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notifications', 'unreadCount'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications', ...notificationsUserIds] });
+      queryClient.invalidateQueries({ queryKey: ['unreadCount', notificationsUserId] });
     },
   });
 
   const markAllMutation = useMutation({
-    mutationFn: markAllNotificationsAsRead,
+    mutationFn: async () => {
+      const targets = notificationsUserIds.length > 0 ? notificationsUserIds : [notificationsUserId];
+      await Promise.all(targets.filter(Boolean).map((id) => markAllNotificationsAsRead(id)));
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notifications', 'unreadCount'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications', ...notificationsUserIds] });
+      queryClient.invalidateQueries({ queryKey: ['unreadCount', notificationsUserId] });
       toast.success('Toutes les notifications marquées comme lues');
     },
   });
@@ -44,7 +54,8 @@ export default function OrgNotificationsPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteNotification(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notifications', 'unreadCount'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications', ...notificationsUserIds] });
+      queryClient.invalidateQueries({ queryKey: ['unreadCount', notificationsUserId] });
       toast.success('Notification supprimée');
     },
   });

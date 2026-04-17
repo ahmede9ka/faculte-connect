@@ -37,7 +37,6 @@ const adminNav = [
   { title: 'Étudiants', url: '/admin/students', icon: GraduationCap },
   { title: 'Organisations', url: '/admin/organizations', icon: Building2 },
   { title: 'Statistiques', url: '/statistics', icon: BarChart3 },
-  { title: 'Notifications', url: '/notifications', icon: Bell },
 ];
 
 const ROLE_KEY = 'active_role';

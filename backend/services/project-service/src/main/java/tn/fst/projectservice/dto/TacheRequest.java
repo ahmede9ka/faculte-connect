@@ -15,4 +15,5 @@ public class TacheRequest {
     private int progression;
     private String commentaire;
     private List<String> membresEmails;
+    private String updatedByEmail;
 }

@@ -10,6 +10,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.support.serializer.JacksonJsonSerializer; // ✅ 4.0 class
 import tn.fst.projectservice.dto.TacheAssigneeEvent;
+import tn.fst.projectservice.dto.TacheUpdateEvent;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -27,20 +28,39 @@ public class KafkaProducerConfig {
         config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
 
         // ✅ Fluent API: no-arg constructor + .noTypeInfo()
-        // noTypeInfo() = don't add __TypeId__ headers, matching the consumer's setUseTypeHeaders(false)
-        JacksonJsonSerializer<TacheAssigneeEvent> valueSerializer =
-                new JacksonJsonSerializer<TacheAssigneeEvent>()
-                        .noTypeInfo();
+        // noTypeInfo() = don't add __TypeId__ headers, matching the consumer's
+        // setUseTypeHeaders(false)
+        JacksonJsonSerializer<TacheAssigneeEvent> valueSerializer = new JacksonJsonSerializer<TacheAssigneeEvent>()
+                .noTypeInfo();
 
         return new DefaultKafkaProducerFactory<>(
                 config,
                 new StringSerializer(),
-                valueSerializer
-        );
+                valueSerializer);
     }
 
     @Bean
     public KafkaTemplate<String, TacheAssigneeEvent> kafkaTemplate() {
         return new KafkaTemplate<>(producerFactory());
+    }
+
+    @Bean
+    public ProducerFactory<String, TacheUpdateEvent> tacheUpdateProducerFactory() {
+        Map<String, Object> config = new HashMap<>();
+        config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+
+        JacksonJsonSerializer<TacheUpdateEvent> valueSerializer = new JacksonJsonSerializer<TacheUpdateEvent>()
+                .noTypeInfo();
+
+        return new DefaultKafkaProducerFactory<>(
+                config,
+                new StringSerializer(),
+                valueSerializer);
+    }
+
+    @Bean
+    public KafkaTemplate<String, TacheUpdateEvent> tacheUpdateKafkaTemplate() {
+        return new KafkaTemplate<>(tacheUpdateProducerFactory());
     }
 }

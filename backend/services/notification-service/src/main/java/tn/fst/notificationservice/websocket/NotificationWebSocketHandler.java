@@ -9,6 +9,8 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.net.URI;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -63,7 +65,9 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
         for (String pair : pairs) {
             String[] kv = pair.split("=", 2);
             if (kv.length == 2) {
-                params.put(kv[0], kv[1]);
+                String decodedKey = URLDecoder.decode(kv[0], StandardCharsets.UTF_8);
+                String decodedValue = URLDecoder.decode(kv[1], StandardCharsets.UTF_8);
+                params.put(decodedKey, decodedValue);
             }
         }
         return params.get(key);

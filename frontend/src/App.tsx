@@ -38,7 +38,6 @@ import ProjectsListPage from "./pages/shared/ProjectsListPage";
 import ProjectDetailsPage from "./pages/shared/ProjectDetailsPage";
 import EventsPage from "./pages/shared/EventsPage";
 import StatisticsPage from "./pages/shared/StatisticsPage";
-import NotificationsPage from "./pages/shared/NotificationsPage";
 import ProfilePage from "./pages/shared/ProfilePage";
 import EditProfilePage from "./pages/shared/EditProfilePage";
 
@@ -81,7 +80,6 @@ function AppRoutes() {
       <Route path="/events" element={<ProtectedRoute><EventsPage /></ProtectedRoute>} />
       <Route path="/events/create" element={<RoleProtectedRoute allowed={["organization"]}><CreateEventPage /></RoleProtectedRoute>} />
       <Route path="/statistics" element={<ProtectedRoute><StatisticsPage /></ProtectedRoute>} />
-      <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
       <Route path="/recommendations" element={<ProtectedRoute><RecommendationsPage /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
       <Route path="/profile/edit" element={<ProtectedRoute><EditProfilePage /></ProtectedRoute>} />
