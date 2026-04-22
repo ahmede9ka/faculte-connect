@@ -1,4 +1,4 @@
-# Faculte Connect
+# Faculte Connect - Fourat
 
 This repository contains the source code for the Faculte Connect platform.
 
