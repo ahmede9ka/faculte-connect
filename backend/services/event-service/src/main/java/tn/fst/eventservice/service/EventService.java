@@ -2,8 +2,10 @@ package tn.fst.eventservice.service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import tn.fst.eventservice.kafka.EventParticipationProducer;
 import tn.fst.eventservice.dto.EventRequest;
 import tn.fst.eventservice.dto.EventResponse;
+import tn.fst.eventservice.dto.EventParticipationEvent;
 import tn.fst.eventservice.entity.Event;
 import tn.fst.eventservice.repository.EventRepository;
 
@@ -17,6 +19,7 @@ import java.util.stream.Collectors;
 public class EventService {
 
     private final EventRepository eventRepository;
+    private final EventParticipationProducer eventParticipationProducer;
 
     public EventResponse create(EventRequest request) {
         Event event = Event.builder()
@@ -101,6 +104,16 @@ public class EventService {
 
         event.getParticipants().add(userEmail);
         Event updated = eventRepository.save(event);
+
+        if (updated.getOrganisateur() != null && !updated.getOrganisateur().isBlank()) {
+            eventParticipationProducer.publishParticipation(EventParticipationEvent.builder()
+                    .eventId(updated.getId())
+                    .eventTitle(updated.getTitre())
+                    .participantEmail(userEmail)
+                    .organizerEmail(updated.getOrganisateur())
+                    .build());
+        }
+
         return toResponse(updated);
     }
 
