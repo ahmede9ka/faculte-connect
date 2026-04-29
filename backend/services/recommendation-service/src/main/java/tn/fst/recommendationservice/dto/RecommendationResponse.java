@@ -17,6 +17,8 @@ public class RecommendationResponse {
     private String id;
     private String userId;
     private String projetId;
+    private String eventId;
+    private String recommendationType;
     private String titre;
     private String categorie;
     private int competenceMatch;

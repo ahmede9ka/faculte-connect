@@ -24,6 +24,11 @@ public class Recommendation {
 
     private String projetId;
 
+    private String eventId;
+
+    // PROJECT or EVENT
+    private String recommendationType;
+
     private String titre;
 
     private String categorie;

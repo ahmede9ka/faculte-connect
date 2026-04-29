@@ -3,6 +3,8 @@ package tn.fst.recommendationservice.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import tn.fst.recommendationservice.client.AuthServiceClient;
+import tn.fst.recommendationservice.client.EventDto;
+import tn.fst.recommendationservice.client.EventServiceClient;
 import tn.fst.recommendationservice.client.ProjectServiceClient;
 import tn.fst.recommendationservice.client.ProjetDto;
 import tn.fst.recommendationservice.client.UserDto;
@@ -22,6 +24,7 @@ public class RecommendationService {
     private final RecommendationRepository recommendationRepository;
     private final AuthServiceClient authServiceClient;
     private final ProjectServiceClient projectServiceClient;
+    private final EventServiceClient eventServiceClient;
 
     public List<RecommendationResponse> generate(String userId) {
         try {
@@ -35,6 +38,9 @@ public class RecommendationService {
 
             // Get all projects
             List<ProjetDto> projects = projectServiceClient.getAllProjets();
+
+            // Get upcoming events
+            List<EventDto> events = eventServiceClient.getUpcomingEvents();
 
             // Clear old recommendations
             recommendationRepository.deleteByUserId(userId);
@@ -66,11 +72,48 @@ public class RecommendationService {
                 if (matchScore > 0) {
                     matchScore = Math.min(matchScore, 100); // Cap at 100%
 
-                    Recommendation recommendation = Recommendation.builder()
+                        Recommendation recommendation = Recommendation.builder()
                             .userId(userId)
                             .projetId(project.getId())
+                            .recommendationType("PROJECT")
                             .titre(project.getTitre())
                             .categorie(project.getCategorie())
+                            .competenceMatch(matchScore)
+                            .dateRecommendation(LocalDateTime.now())
+                            .competencesMatched(matchedCompetences)
+                            .build();
+
+                    recommendations.add(recommendation);
+                }
+            }
+
+            for (EventDto event : events) {
+                if (event.getParticipants() != null && event.getParticipants().contains(userId)) {
+                    continue;
+                }
+
+                List<String> matchedCompetences = new ArrayList<>();
+                int matchScore = 0;
+
+                String eventText = (event.getTitre() + " " + event.getDescription() + " " + event.getType())
+                        .toLowerCase();
+
+                for (String competence : userCompetences) {
+                    if (eventText.contains(competence.toLowerCase())) {
+                        matchedCompetences.add(competence);
+                        matchScore += 20;
+                    }
+                }
+
+                if (matchScore > 0) {
+                    matchScore = Math.min(matchScore, 100);
+
+                    Recommendation recommendation = Recommendation.builder()
+                            .userId(userId)
+                            .eventId(event.getId())
+                            .recommendationType("EVENT")
+                            .titre(event.getTitre())
+                            .categorie(event.getType())
                             .competenceMatch(matchScore)
                             .dateRecommendation(LocalDateTime.now())
                             .competencesMatched(matchedCompetences)
@@ -122,6 +165,8 @@ public class RecommendationService {
                 .id(recommendation.getId())
                 .userId(recommendation.getUserId())
                 .projetId(recommendation.getProjetId())
+            .eventId(recommendation.getEventId())
+            .recommendationType(recommendation.getRecommendationType())
                 .titre(recommendation.getTitre())
                 .categorie(recommendation.getCategorie())
                 .competenceMatch(recommendation.getCompetenceMatch())
