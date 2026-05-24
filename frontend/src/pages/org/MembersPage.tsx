@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { addProjectMember, fetchProjectsByOrganisation, removeProjectMember, updateProjectMember } from '@/lib/api';
+import { addProjectMember, fetchProjectsByOrganisation, removeProjectMember, updateProjectMember, updateProjectMemberRole } from '@/lib/api';
 import { ProjectMember } from '@/lib/types';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
@@ -36,6 +36,7 @@ export default function MembersPage() {
   const queryClient = useQueryClient();
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [addEmail, setAddEmail] = useState('');
+  const [addRole, setAddRole] = useState<ProjectMember['role']>('Membre actif');
   const [editEmail, setEditEmail] = useState('');
   const [editingMemberEmail, setEditingMemberEmail] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
@@ -58,17 +59,7 @@ export default function MembersPage() {
     [projects, selectedProjectId]
   );
 
-  const members = useMemo<ProjectMember[]>(() => {
-    if (!selectedProject) return [];
-
-    return (selectedProject.membres || []).map((m) => ({
-      id: m.email,
-      userId: m.email,
-      nom: m.email,
-      email: m.email,
-      role: m.email === selectedProject.chefDeProjet ? 'Chef' : 'Membre actif',
-    }));
-  }, [selectedProject]);
+  const members = useMemo<ProjectMember[]>(() => selectedProject?.membres || [], [selectedProject]);
 
   const memberStats = useMemo(() => {
     if (!selectedProject) return [];
@@ -101,11 +92,13 @@ export default function MembersPage() {
   }, [members, selectedProject]);
 
   const addMutation = useMutation({
-    mutationFn: (email: string) => addProjectMember(selectedProjectId, email),
+    mutationFn: (payload: { email: string; role: ProjectMember['role'] }) =>
+      addProjectMember(selectedProjectId, payload.email, payload.role),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['org-projects', userName] });
       toast.success('Membre ajoute');
       setAddEmail('');
+      setAddRole('Membre actif');
       setAddOpen(false);
     },
     onError: () => toast.error('Impossible d\'ajouter ce membre'),
@@ -133,6 +126,16 @@ export default function MembersPage() {
     onError: () => toast.error('Impossible de supprimer ce membre'),
   });
 
+  const updateRoleMutation = useMutation({
+    mutationFn: ({ email, role }: { email: string; role: ProjectMember['role'] }) =>
+      updateProjectMemberRole(selectedProjectId, email, role),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['org-projects', userName] });
+      toast.success('Role mis a jour');
+    },
+    onError: () => toast.error('Impossible de changer le role'),
+  });
+
   const handleAdd = () => {
     if (!selectedProjectId) {
       toast.error('Choisissez un projet');
@@ -142,7 +145,7 @@ export default function MembersPage() {
       toast.error('Email requis');
       return;
     }
-    addMutation.mutate(addEmail.trim());
+    addMutation.mutate({ email: addEmail.trim(), role: addRole });
   };
 
   const handleEdit = () => {
@@ -198,6 +201,16 @@ export default function MembersPage() {
                     placeholder="membre@exemple.com"
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label>Role</Label>
+                  <Select value={addRole} onValueChange={(value) => setAddRole(value as ProjectMember['role'])}>
+                    <SelectTrigger><SelectValue placeholder="Choisir un role" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Chef de projet">Chef de projet</SelectItem>
+                      <SelectItem value="Membre actif">Membre actif</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="flex justify-end gap-2">
                   <Button variant="outline" onClick={() => setAddOpen(false)}>Annuler</Button>
                   <Button onClick={handleAdd} disabled={addMutation.isPending}>Ajouter</Button>
@@ -244,7 +257,22 @@ export default function MembersPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <Badge variant="outline">{m.role}</Badge>
+                        <Select
+                          value={m.role}
+                          onValueChange={(value) => updateRoleMutation.mutate({
+                            email: m.email,
+                            role: value as ProjectMember['role'],
+                          })}
+                          disabled={isChef}
+                        >
+                          <SelectTrigger className="h-8 w-[160px]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Chef de projet">Chef de projet</SelectItem>
+                            <SelectItem value="Membre actif">Membre actif</SelectItem>
+                          </SelectContent>
+                        </Select>
                       <div className="flex gap-1">
                         <Dialog open={editOpen && editingMemberEmail === m.email} onOpenChange={(open) => {
                           setEditOpen(open);

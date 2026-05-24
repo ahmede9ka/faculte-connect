@@ -58,7 +58,7 @@ export interface ProjectMember {
   userId: string;
   nom: string;
   email: string;
-  role: 'Chef' | 'Membre actif' | 'Observateur';
+  role: 'Chef de projet' | 'Membre actif';
   avatar?: string;
 }
 
@@ -135,4 +135,13 @@ export interface Recommendation {
   competenceMatch: number;
   explication: string;
   competences: string[];
+}
+
+export interface ChatMessage {
+  id: string;
+  projectId: string;
+  senderEmail: string;
+  senderName: string;
+  content: string;
+  createdAt: string;
 }

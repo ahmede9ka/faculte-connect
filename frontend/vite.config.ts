@@ -10,6 +10,9 @@ function bypassHtmlNavigation(req: { headers: { accept?: string }; url?: string 
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
+  define: {
+    global: "globalThis",
+  },
   server: {
     host: "::",
     // Keep the frontend dev server on a different port than Spring gateway (8080)

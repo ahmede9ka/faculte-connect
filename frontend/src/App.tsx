@@ -17,6 +17,7 @@ import StudentProjectsPage from "./pages/student/StudentProjectsPage";
 import StudentEventsPage from "./pages/student/StudentEventsPage";
 import StudentNotificationsPage from "./pages/student/StudentNotificationsPage";
 import StudentProfilePage from "./pages/student/StudentProfilePage";
+import StudentChatPage from "./pages/student/StudentChatPage";
 // Organisation
 import SignupOrgPage from "./pages/org/SignupOrgPage";
 import OrgDashboardPage from "./pages/org/OrgDashboardPage";
@@ -28,6 +29,7 @@ import OrgEventsPage from "./pages/org/OrgEventsPage";
 import OrgStatisticsPage from "./pages/org/OrgStatisticsPage";
 import OrgNotificationsPage from "./pages/org/OrgNotificationsPage";
 import OrgProfilePage from "./pages/org/OrgProfilePage";
+import OrgChatPage from "./pages/org/OrgChatPage";
 // Admin
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
 import AdminStudentsPage from "./pages/admin/AdminStudentsPage";
@@ -98,6 +100,7 @@ function AppRoutes() {
       <Route path="/student/recommendations" element={<RoleProtectedRoute allowed={["student"]}><RecommendationsPage /></RoleProtectedRoute>} />
       <Route path="/student/notifications" element={<RoleProtectedRoute allowed={["student"]}><StudentNotificationsPage /></RoleProtectedRoute>} />
       <Route path="/student/profile" element={<RoleProtectedRoute allowed={["student"]}><StudentProfilePage /></RoleProtectedRoute>} />
+      <Route path="/student/chat" element={<RoleProtectedRoute allowed={["student"]}><StudentChatPage /></RoleProtectedRoute>} />
       {/* Org-specific routes */}
       <Route path="/org/projects" element={<RoleProtectedRoute allowed={["organization"]}><OrgProjectsPage /></RoleProtectedRoute>} />
       <Route path="/org/events" element={<RoleProtectedRoute allowed={["organization"]}><OrgEventsPage /></RoleProtectedRoute>} />
@@ -105,6 +108,7 @@ function AppRoutes() {
       <Route path="/org/statistics" element={<RoleProtectedRoute allowed={["organization"]}><OrgStatisticsPage /></RoleProtectedRoute>} />
       <Route path="/org/notifications" element={<RoleProtectedRoute allowed={["organization"]}><OrgNotificationsPage /></RoleProtectedRoute>} />
       <Route path="/org/profile" element={<RoleProtectedRoute allowed={["organization"]}><OrgProfilePage /></RoleProtectedRoute>} />
+      <Route path="/org/chat" element={<RoleProtectedRoute allowed={["organization"]}><OrgChatPage /></RoleProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

@@ -58,6 +58,7 @@ public class ProjetService {
                 .ressources(request.getRessources() != null ? request.getRessources() : new ArrayList<>())
                 .affectations(request.getAffectations() != null ? request.getAffectations() : new HashMap<>())
                 .build();
+        initializeMemberRoles(projet);
         return projetRepository.save(projet);
     }
 
@@ -145,7 +146,9 @@ public class ProjetService {
             projet.setVisibilite(request.getVisibilite());
         }
         if (request.getMembres() != null) {
-            projet.setMembres(request.getMembres());
+            List<String> updatedMembers = new ArrayList<>(request.getMembres());
+            projet.setMembres(updatedMembers);
+            syncMemberRoles(projet, updatedMembers);
         }
         if (request.getTaches() != null) {
             projet.setTaches(request.getTaches());
@@ -166,7 +169,7 @@ public class ProjetService {
         projetRepository.deleteById(id);
     }
 
-    public Projet addMember(String projetId, String email) {
+    public Projet addMember(String projetId, String email, MemberRole role) {
         if (email == null || email.isBlank()) {
             throw new RuntimeException("Email is required");
         }
@@ -183,6 +186,18 @@ public class ProjetService {
 
         if (!projet.getMembres().contains(email)) {
             projet.getMembres().add(email);
+        }
+
+        ensureMemberRolesMap(projet);
+        MemberRole resolvedRole = role != null ? role : resolveDefaultRole(projet, email);
+        projet.getMemberRoles().put(email, resolvedRole);
+
+        if (resolvedRole == MemberRole.CHEF_DE_PROJET) {
+            String previousChef = projet.getChefProjet();
+            if (previousChef != null && !previousChef.isBlank() && !previousChef.equals(email)) {
+                projet.getMemberRoles().put(previousChef, MemberRole.MEMBRE_ACTIF);
+            }
+            projet.setChefProjet(email);
         }
 
         if (projet.getAffectations() == null) {
@@ -209,6 +224,14 @@ public class ProjetService {
 
         if (projet.getMembres() != null) {
             projet.getMembres().removeIf(member -> member.equals(email));
+        }
+
+        if (projet.getMemberRoles() != null) {
+            projet.getMemberRoles().remove(email);
+        }
+
+        if (email.equals(projet.getChefProjet())) {
+            projet.setChefProjet(null);
         }
 
         if (projet.getAffectations() != null) {
@@ -243,6 +266,8 @@ public class ProjetService {
             projet.setMembres(new ArrayList<>());
         }
 
+        ensureMemberRolesMap(projet);
+
         if (!projet.getMembres().contains(currentEmail)) {
             throw new RuntimeException("Member " + currentEmail + " is not in this project");
         }
@@ -257,6 +282,15 @@ public class ProjetService {
             projet.getAffectations().put(newEmail, tacheIds);
         }
 
+        if (projet.getMemberRoles().containsKey(currentEmail)) {
+            MemberRole role = projet.getMemberRoles().remove(currentEmail);
+            projet.getMemberRoles().put(newEmail, role);
+        }
+
+        if (currentEmail.equals(projet.getChefProjet())) {
+            projet.setChefProjet(newEmail);
+        }
+
         if (projet.getTaches() != null) {
             for (Tache tache : projet.getTaches()) {
                 if (tache.getMembresEmails() != null && tache.getMembresEmails().contains(currentEmail)) {
@@ -267,6 +301,85 @@ public class ProjetService {
         }
 
         return projetRepository.save(projet);
+    }
+
+    public Projet updateMemberRole(String projetId, String email, MemberRole role) {
+        if (email == null || email.isBlank()) {
+            throw new RuntimeException("Email is required");
+        }
+        if (role == null) {
+            throw new RuntimeException("Role is required");
+        }
+
+        Projet projet = getById(projetId);
+        if (projet.getMembres() == null || !projet.getMembres().contains(email)) {
+            throw new RuntimeException("Member " + email + " is not in this project");
+        }
+
+        ensureMemberRolesMap(projet);
+        projet.getMemberRoles().put(email, role);
+
+        if (role == MemberRole.CHEF_DE_PROJET) {
+            String previousChef = projet.getChefProjet();
+            if (previousChef != null && !previousChef.isBlank() && !previousChef.equals(email)) {
+                projet.getMemberRoles().put(previousChef, MemberRole.MEMBRE_ACTIF);
+            }
+            projet.setChefProjet(email);
+        } else if (email.equals(projet.getChefProjet())) {
+            projet.setChefProjet(null);
+        }
+
+        return projetRepository.save(projet);
+    }
+
+    private void ensureMemberRolesMap(Projet projet) {
+        if (projet.getMemberRoles() == null) {
+            projet.setMemberRoles(new HashMap<>());
+        }
+    }
+
+    private MemberRole resolveDefaultRole(Projet projet, String email) {
+        if (email != null && email.equals(projet.getChefProjet())) {
+            return MemberRole.CHEF_DE_PROJET;
+        }
+        return MemberRole.MEMBRE_ACTIF;
+    }
+
+    private void initializeMemberRoles(Projet projet) {
+        ensureMemberRolesMap(projet);
+        if (projet.getMembres() == null) {
+            projet.setMembres(new ArrayList<>());
+        }
+
+        for (String email : projet.getMembres()) {
+            projet.getMemberRoles().putIfAbsent(email, resolveDefaultRole(projet, email));
+        }
+
+        String chefEmail = projet.getChefProjet();
+        if (chefEmail != null && !chefEmail.isBlank()) {
+            if (!projet.getMembres().contains(chefEmail)) {
+                projet.getMembres().add(chefEmail);
+            }
+            projet.getMemberRoles().put(chefEmail, MemberRole.CHEF_DE_PROJET);
+        }
+    }
+
+    private void syncMemberRoles(Projet projet, List<String> membres) {
+        ensureMemberRolesMap(projet);
+
+        projet.getMemberRoles().keySet().removeIf(email -> !membres.contains(email));
+
+        for (String email : membres) {
+            projet.getMemberRoles().putIfAbsent(email, resolveDefaultRole(projet, email));
+        }
+
+        String chefEmail = projet.getChefProjet();
+        if (chefEmail != null && !chefEmail.isBlank()) {
+            if (!membres.contains(chefEmail)) {
+                membres.add(chefEmail);
+            }
+            projet.getMemberRoles().put(chefEmail, MemberRole.CHEF_DE_PROJET);
+        }
     }
 
     // ✅ Add task to project

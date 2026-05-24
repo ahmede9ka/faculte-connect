@@ -1,4 +1,4 @@
-import type { Event, EventComment, Notification, Project, ProjectMember, Recommendation, Task, TaskComment, User } from "./types";
+import type { ChatMessage, Event, EventComment, Notification, Project, ProjectMember, Recommendation, Task, TaskComment, User } from "./types";
 
 const storage = {
   token: "auth_token",
@@ -16,6 +16,7 @@ type ProjetRaw = {
   visibilite?: unknown;
   progression?: unknown;
   membres?: unknown;
+  memberRoles?: unknown;
   ressources?: unknown;
   taches?: unknown;
 };
@@ -24,6 +25,15 @@ type RessourceRaw = {
   nom?: unknown;
   // Backend entity uses "valeur" as the field name
   valeur?: unknown;
+};
+
+type ChatMessageRaw = {
+  id?: unknown;
+  projectId?: unknown;
+  senderEmail?: unknown;
+  senderName?: unknown;
+  content?: unknown;
+  createdAt?: unknown;
 };
 
 type TacheRaw = {
@@ -257,6 +267,10 @@ function mapProject(p: ProjetRaw): Project {
     ? (p.membres as unknown[]).map(asString)
     : [];
   const chefEmail: string = asString(p.chefProjet);
+  const rolesRaw =
+    p.memberRoles && typeof p.memberRoles === "object"
+      ? (p.memberRoles as Record<string, unknown>)
+      : {};
   const taches: Task[] = Array.isArray(p.taches)
     ? (p.taches as unknown[]).map((t) => mapTask(t as TacheRaw, asString(p.id)))
     : [];
@@ -273,13 +287,17 @@ function mapProject(p: ProjetRaw): Project {
     statut: mapProjectStatus(asString(p.status)),
     visibilite: asString(p.visibilite).toUpperCase() === "PRIVE" ? "PRIVE" : "PUBLIC",
     progression: asNumber(p.progression),
-    membres: emails.map((email) => ({
-      id: email,
-      userId: email,
-      nom: email,
-      email,
-      role: email === chefEmail ? "Chef" : "Membre actif",
-    })),
+    membres: emails.map((email) => {
+      const isChef = email === chefEmail;
+      const roleRaw = rolesRaw[email];
+      return {
+        id: email,
+        userId: email,
+        nom: email,
+        email,
+        role: mapMemberRole(roleRaw, isChef),
+      };
+    }),
     ressources: (
       Array.isArray(p.ressources)
         ? (p.ressources as unknown[]).map((r) => r as RessourceRaw)
@@ -291,6 +309,20 @@ function mapProject(p: ProjetRaw): Project {
     })),
     taches,
   };
+}
+
+function mapMemberRole(value: unknown, isChef: boolean): ProjectMember["role"] {
+  const role = asString(value).toUpperCase();
+  if (role === "CHEF_DE_PROJET") return "Chef de projet";
+  if (role === "MEMBRE_ACTIF") return "Membre actif";
+  return isChef ? "Chef de projet" : "Membre actif";
+}
+
+function toBackendMemberRole(role?: ProjectMember["role"]): string | undefined {
+  if (!role) return undefined;
+  if (role === "Chef de projet") return "CHEF_DE_PROJET";
+  if (role === "Membre actif") return "MEMBRE_ACTIF";
+  return undefined;
 }
 
 // FIX: a single Tache can have multiple assignees (membresEmails).
@@ -338,6 +370,26 @@ export const fetchProjectMembers = async (projetId: string): Promise<string[]> =
   try {
     const members = await apiJson<string[]>(`/projets/${encodeURIComponent(projetId)}/membres`);
     return Array.isArray(members) ? members.map(asString) : [];
+  } catch {
+    return [];
+  }
+};
+
+export const fetchProjectMessages = async (projetId: string): Promise<ChatMessage[]> => {
+  try {
+    const messages = await apiJson<ChatMessageRaw[]>(
+      `/projets/${encodeURIComponent(projetId)}/messages`
+    );
+    return Array.isArray(messages)
+      ? messages.map((m) => ({
+          id: asString(m.id),
+          projectId: asString(m.projectId),
+          senderEmail: asString(m.senderEmail),
+          senderName: asString(m.senderName),
+          content: asString(m.content),
+          createdAt: asString(m.createdAt),
+        }))
+      : [];
   } catch {
     return [];
   }
@@ -448,6 +500,15 @@ export const fetchProjects = async (): Promise<Project[]> => {
   return projectsRaw.map(mapProject);
 };
 
+export const fetchPublicProjects = async (): Promise<Project[]> => {
+  try {
+    const projectsRaw = await apiJson<ProjetRaw[]>(`/projets/public`);
+    return projectsRaw.map(mapProject);
+  } catch {
+    return [];
+  }
+};
+
 export const fetchProjectsByChef = async (email: string): Promise<Project[]> => {
   if (!email) return [];
 
@@ -543,11 +604,15 @@ export const updateProject = async (
 
 // ==================== PROJECT MEMBERS ====================
 
-export const addProjectMember = async (projetId: string, email: string): Promise<Project> => {
+export const addProjectMember = async (
+  projetId: string,
+  email: string,
+  role?: ProjectMember["role"]
+): Promise<Project> => {
   const projetRaw = await apiJson<ProjetRaw>(`/projets/${encodeURIComponent(projetId)}/membres`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email }),
+    body: JSON.stringify({ email, role: toBackendMemberRole(role) }),
   });
   return mapProject(projetRaw);
 };
@@ -572,6 +637,22 @@ export const removeProjectMember = async (projetId: string, email: string): Prom
   const projetRaw = await apiJson<ProjetRaw>(
     `/projets/${encodeURIComponent(projetId)}/membres/${encodeURIComponent(email)}`,
     { method: "DELETE" }
+  );
+  return mapProject(projetRaw);
+};
+
+export const updateProjectMemberRole = async (
+  projetId: string,
+  email: string,
+  role: ProjectMember["role"]
+): Promise<Project> => {
+  const projetRaw = await apiJson<ProjetRaw>(
+    `/projets/${encodeURIComponent(projetId)}/membres/${encodeURIComponent(email)}/role`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role: toBackendMemberRole(role) }),
+    }
   );
   return mapProject(projetRaw);
 };

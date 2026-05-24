@@ -12,6 +12,7 @@ import {
   removeProjectMember,
   fetchProject,
   fetchTasks,
+  updateProject,
 } from "@/lib/api";
 import { Project, Task } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -160,6 +161,26 @@ export default function ProjectDetailsPage() {
     onError: () => toast.error("Impossible d'ajouter le membre"),
   });
 
+  const updateVisibilityMutation = useMutation({
+    mutationFn: (nextVisibility: Project["visibilite"]) =>
+      updateProject(project.id, {
+        titre: project.titre,
+        desc: project.description,
+        deadline: project.dateFin,
+        chefProjet: project.chefDeProjet,
+        organisation: project.categorie,
+        visibilite: nextVisibility,
+        membres: project.membres.map((m) => m.email),
+        ressources: project.ressources.map((r) => ({ nom: r.nom, valeur: r.lien })),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects", "details", id] });
+      queryClient.invalidateQueries({ queryKey: ["projects", "list"] });
+      toast.success("Visibilite mise a jour");
+    },
+    onError: () => toast.error("Impossible de modifier la visibilite"),
+  });
+
   const removeMemberMutation = useMutation({
     mutationFn: ({ projetId, email }: { projetId: string; email: string }) =>
       removeProjectMember(projetId, email),
@@ -252,6 +273,7 @@ export default function ProjectDetailsPage() {
     normalizedUserEmail.length > 0 &&
     (project.chefDeProjet.toLowerCase() === normalizedUserEmail ||
       project.membres.some((member) => member.email.toLowerCase() === normalizedUserEmail));
+  const isChef = project.chefDeProjet.toLowerCase() === normalizedUserEmail;
   const canContribute = canManageProject || isProjectMember;
   const canRequestToJoin =
     userRole === "student" &&
@@ -375,6 +397,21 @@ export default function ProjectDetailsPage() {
                 <UserPlus className="h-4 w-4" />
                 Demande envoyee
               </Button>
+            )}
+            {isChef && (
+              <Select
+                value={project.visibilite}
+                onValueChange={(value) => updateVisibilityMutation.mutate(value as Project["visibilite"])}
+                disabled={updateVisibilityMutation.isPending}
+              >
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="PUBLIC">Public</SelectItem>
+                  <SelectItem value="PRIVE">Prive</SelectItem>
+                </SelectContent>
+              </Select>
             )}
             {canManageProject && <Button variant="outline">Modifier</Button>}
           </div>

@@ -9,7 +9,11 @@ import java.util.List;
 import java.util.Map;
 
 @Document(collection = "projets")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Projet {
 
     @Id
@@ -24,10 +28,11 @@ public class Projet {
     private StatusApprobation approbation;
     private VisibiliteProjet visibilite;
     private String commentaireAdmin;
-    private int progression;                          // 0-100%
+    private int progression; // 0-100%
     private List<String> membres;
+    private Map<String, MemberRole> memberRoles; // email -> role in project
     private List<Tache> taches;
     private List<Objectif> objectifs;
     private List<Ressource> ressources;
-    private Map<String, List<String>> affectations;   // email -> list of tache IDs
+    private Map<String, List<String>> affectations; // email -> list of tache IDs
 }

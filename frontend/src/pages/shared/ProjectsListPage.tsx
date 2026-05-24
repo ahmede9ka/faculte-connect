@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { StatusBadge } from '@/components/StatusBadge';
 import { ProgressBar } from '@/components/ProgressBar';
-import { deleteProject, fetchMyProjects, fetchProjects, fetchProjectsByOrganisation } from '@/lib/api';
+import { deleteProject, fetchMyProjects, fetchProjects, fetchProjectsByOrganisation, fetchPublicProjects } from '@/lib/api';
 import { Project } from '@/lib/types';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
@@ -25,8 +25,19 @@ export default function ProjectsListPage() {
   const { data: projects = [], isLoading } = useQuery<Project[]>({
     queryKey: ['projects', 'list', userRole, userName],
     queryFn: () => {
-      if (userRole === 'organization') return fetchProjectsByOrganisation(userName);
-      if (userRole === 'student') return fetchMyProjects();
+      if (userRole === 'organization') {
+        return Promise.all([
+          fetchProjectsByOrganisation(userName),
+          fetchPublicProjects(),
+        ]).then(([owned, publicProjects]) => {
+          const merged = new Map<string, Project>();
+          [...publicProjects, ...owned].forEach((project) => {
+            if (project.id) merged.set(project.id, project);
+          });
+          return Array.from(merged.values());
+        });
+      }
+      if (userRole === 'student') return fetchPublicProjects();
       return fetchProjects();
     },
     enabled: userRole !== 'organization' || Boolean(userName),

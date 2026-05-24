@@ -12,6 +12,8 @@ import tn.fst.projectservice.dto.TacheCommentRequest;
 import tn.fst.projectservice.dto.TacheRequest;
 import tn.fst.projectservice.dto.TaskMembersRequest;
 import tn.fst.projectservice.dto.UpdateMemberRequest;
+import tn.fst.projectservice.dto.UpdateMemberRoleRequest;
+import tn.fst.projectservice.entity.ChatMessage;
 import tn.fst.projectservice.entity.Projet;
 import tn.fst.projectservice.entity.StatusApprobation;
 import tn.fst.projectservice.entity.StatusProjet;
@@ -19,6 +21,7 @@ import tn.fst.projectservice.entity.TacheComment;
 import tn.fst.projectservice.entity.Tache;
 import tn.fst.projectservice.entity.VisibiliteProjet;
 import tn.fst.projectservice.service.ProjetService;
+import tn.fst.projectservice.service.ChatService;
 
 import java.util.List;
 
@@ -29,6 +32,7 @@ import java.util.List;
 public class ProjetController {
 
     private final ProjetService projetService;
+    private final ChatService chatService;
 
     // ===== PROJET ENDPOINTS =====
 
@@ -118,7 +122,7 @@ public class ProjetController {
     public ResponseEntity<Projet> addMember(@PathVariable String id,
             @Valid @RequestBody AddMemberRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(projetService.addMember(id, request.getEmail()));
+                .body(projetService.addMember(id, request.getEmail(), request.getRole()));
     }
 
     @PutMapping("/{id}/membres/{email}")
@@ -132,6 +136,18 @@ public class ProjetController {
     public ResponseEntity<Projet> removeMember(@PathVariable String id,
             @PathVariable String email) {
         return ResponseEntity.ok(projetService.removeMember(id, email));
+    }
+
+    @GetMapping("/{id}/messages")
+    public ResponseEntity<List<ChatMessage>> getProjectMessages(@PathVariable String id) {
+        return ResponseEntity.ok(chatService.getMessages(id));
+    }
+
+    @PatchMapping("/{id}/membres/{email}/role")
+    public ResponseEntity<Projet> updateMemberRole(@PathVariable String id,
+            @PathVariable String email,
+            @Valid @RequestBody UpdateMemberRoleRequest request) {
+        return ResponseEntity.ok(projetService.updateMemberRole(id, email, request.getRole()));
     }
 
     // ===== TACHE ENDPOINTS =====

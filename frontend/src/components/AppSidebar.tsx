@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, FolderKanban, CalendarDays, BarChart3, Bell,
   Lightbulb, User, LogOut, GraduationCap, Building2, ShieldCheck,
-  ListTodo, Users, Settings
+  ListTodo, Users, Settings, MessageCircle
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/lib/auth-context';
@@ -19,6 +19,7 @@ const studentNav = [
   { title: 'Mes Projets', url: '/student/projects', icon: FolderKanban },
   { title: 'Mes Tâches', url: '/student/tasks', icon: ListTodo },
   { title: 'Événements', url: '/student/events', icon: CalendarDays },
+  { title: 'Chat', url: '/student/chat', icon: MessageCircle },
   { title: 'Recommandations', url: '/student/recommendations', icon: Lightbulb },
   { title: 'Notifications', url: '/student/notifications', icon: Bell },
   { title: 'Profil', url: '/student/profile', icon: User },
@@ -28,6 +29,7 @@ const orgNav = [
   { title: 'Dashboard', url: '/dashboard/organization', icon: LayoutDashboard },
   { title: 'Projets', url: '/org/projects', icon: FolderKanban },
   { title: 'Événements', url: '/org/events', icon: CalendarDays },
+  { title: 'Chat', url: '/org/chat', icon: MessageCircle },
   { title: 'Membres', url: '/org/members', icon: Users },
   { title: 'Statistiques', url: '/org/statistics', icon: BarChart3 },
   { title: 'Notifications', url: '/org/notifications', icon: Bell },

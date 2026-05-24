@@ -15,6 +15,7 @@ const personas: Array<{ label: string; role: UserRole; icon: typeof GraduationCa
 ];
 
 const FST_LOGO_URL = 'https://upload.wikimedia.org/wikipedia/fr/8/8d/FSTLOGO.svg';
+const HERO_IMAGE_URL = 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=1600&q=80';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -42,9 +43,9 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen lg:pr-[50vw]">
       {/* Left - Form */}
-      <div className="flex-1 flex items-center justify-center p-8">
+      <div className="min-h-screen flex items-center justify-center p-8 lg:overflow-y-auto">
         <div className="w-full max-w-md space-y-8">
           <div>
             <Link to="/" className="inline-flex items-center gap-2 mb-8">
@@ -118,12 +119,20 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Right - Visual */}
-      <div className="hidden lg:flex flex-1 gradient-hero items-center justify-center p-12">
-        <div className="text-center text-primary-foreground/90 max-w-md">
-          <GraduationCap className="h-16 w-16 mx-auto mb-6 opacity-80" />
-          <h2 className="font-display text-3xl font-bold mb-4">Faculté des Sciences de Tunis</h2>
-          <p className="text-primary-foreground/60">Votre plateforme de gestion de projets et d'événements universitaires</p>
+      {/* Right - Image */}
+      <div className="hidden lg:block fixed inset-y-0 right-0 w-[50vw]">
+        <img
+          src={HERO_IMAGE_URL}
+          alt="Campus"
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/70 via-slate-900/30 to-transparent" />
+        <div className="relative h-full flex items-end p-12">
+          <div className="text-white/90 max-w-md">
+            <p className="text-xs uppercase tracking-[0.2em] text-white/60">FSTEAM</p>
+            <h2 className="font-display text-3xl font-bold mt-3">Faculté des Sciences de Tunis</h2>
+            <p className="text-white/70 mt-3">Votre plateforme de gestion de projets et d'evenements universitaires</p>
+          </div>
         </div>
       </div>
     </div>

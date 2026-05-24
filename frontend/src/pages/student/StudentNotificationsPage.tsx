@@ -1,12 +1,12 @@
 import { DashboardLayout } from '@/components/DashboardLayout';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, useQueries } from '@tanstack/react-query';
 import { useAuth } from '@/lib/auth-context';
 import {
   fetchNotifications, markNotificationAsRead,
   markAllNotificationsAsRead, deleteNotification,
-  addProjectMember, createNotification,
+  addProjectMember, createNotification, fetchProject,
 } from '@/lib/api';
-import { Notification } from '@/lib/types';
+import { Notification, Project } from '@/lib/types';
 import { Bell, CheckCheck, Trash2, ListTodo, FolderKanban, CalendarDays, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -69,6 +69,11 @@ export default function StudentNotificationsPage() {
         throw new Error('Demande incomplete');
       }
 
+      const project = await fetchProject(projectId);
+      if (project.chefDeProjet !== userEmail) {
+        throw new Error('Acces refuse');
+      }
+
       await addProjectMember(projectId, requesterEmail);
       await markNotificationAsRead(notification.id);
       await createNotification({
@@ -90,6 +95,59 @@ export default function StudentNotificationsPage() {
       toast.error("Impossible d'approuver la demande");
     },
   });
+
+  const declineJoinMutation = useMutation({
+    mutationFn: async (notification: Notification) => {
+      const requesterEmail = extractEmail(notification.message);
+      const projectId = notification.relatedEntityId;
+
+      if (!requesterEmail || !projectId) {
+        throw new Error('Demande incomplete');
+      }
+
+      const project = await fetchProject(projectId);
+      if (project.chefDeProjet !== userEmail) {
+        throw new Error('Acces refuse');
+      }
+
+      await markNotificationAsRead(notification.id);
+      await createNotification({
+        userId: requesterEmail,
+        titre: 'Demande de projet refusee',
+        message: `Votre demande pour rejoindre le projet a ete refusee.`,
+        type: 'WARNING',
+        relatedEntityType: 'PROJECT',
+        relatedEntityId: projectId,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications', userEmail] });
+      queryClient.invalidateQueries({ queryKey: ['unreadCount', userEmail] });
+      toast.success('Demande refusee');
+    },
+    onError: () => {
+      toast.error("Impossible de refuser la demande");
+    },
+  });
+
+  const joinRequests = notifications.filter(n => n.relatedEntityType === 'PROJECT_JOIN_REQUEST');
+  const projectQueries = useQueries({
+    queries: joinRequests.map((n) => ({
+      queryKey: ['project', n.relatedEntityId],
+      queryFn: () => fetchProject(n.relatedEntityId || ''),
+      enabled: Boolean(n.relatedEntityId),
+      staleTime: 60_000,
+    })),
+  });
+
+  const projectsById = joinRequests.reduce<Record<string, Project | null>>(
+    (acc, n, index) => {
+      const projectId = n.relatedEntityId || '';
+      acc[projectId] = projectQueries[index]?.data ?? null;
+      return acc;
+    },
+    {}
+  );
 
   const unread = notifications.filter(n => !n.lu).length;
 
@@ -124,6 +182,8 @@ export default function StudentNotificationsPage() {
             {notifications.map(n => {
               const Icon = typeIcons[n.type];
               const isJoinRequest = n.relatedEntityType === 'PROJECT_JOIN_REQUEST';
+              const project = isJoinRequest ? projectsById[n.relatedEntityId || ''] : null;
+              const isChef = Boolean(project && project.chefDeProjet === userEmail);
               return (
                 <div key={n.id} className={cn('bg-card rounded-xl border p-4 flex items-start gap-4 transition-colors', !n.lu && 'border-primary/30 bg-primary/5')}>
                   <div className={cn('h-10 w-10 rounded-lg flex items-center justify-center shrink-0', typeColors[n.type])}>
@@ -138,13 +198,23 @@ export default function StudentNotificationsPage() {
                     <p className="text-xs text-muted-foreground mt-1">{new Date(n.date).toLocaleDateString('fr-FR')}</p>
                   </div>
                   <div className="flex gap-1 shrink-0">
-                    {isJoinRequest && (
+                    {isJoinRequest && isChef && (
                       <Button
                         size="sm"
                         onClick={() => approveJoinMutation.mutate(n)}
                         disabled={approveJoinMutation.isPending}
                       >
                         Approuver
+                      </Button>
+                    )}
+                    {isJoinRequest && isChef && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => declineJoinMutation.mutate(n)}
+                        disabled={declineJoinMutation.isPending}
+                      >
+                        Refuser
                       </Button>
                     )}
                     {!n.lu && (
