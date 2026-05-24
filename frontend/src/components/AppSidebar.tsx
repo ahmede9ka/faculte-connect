@@ -11,6 +11,8 @@ import {
   SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar,
 } from '@/components/ui/sidebar';
 import type { UserRole } from '@/lib/types';
+import { SmartImage } from '@/components/SmartImage';
+import { avatarPhoto, imageCandidates, organizationPhoto } from '@/lib/images';
 
 const studentNav = [
   { title: 'Dashboard', url: '/dashboard/student', icon: LayoutDashboard },
@@ -128,8 +130,11 @@ export function AppSidebar() {
           {!collapsed ? (
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-full bg-sidebar-accent flex items-center justify-center">
-                  <User className="h-4 w-4 text-sidebar-foreground" />
+                <div className="h-8 w-8 rounded-full bg-sidebar-accent overflow-hidden shrink-0">
+                  <SmartImage
+                    sources={imageCandidates(undefined, userRole === 'organization' ? organizationPhoto(userName) : avatarPhoto(userName))}
+                    alt={userName || 'Utilisateur'}
+                  />
                 </div>
                 <span className="text-xs text-sidebar-foreground truncate max-w-[120px]">{userName}</span>
               </div>

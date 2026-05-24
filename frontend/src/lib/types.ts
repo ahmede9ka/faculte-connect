@@ -46,6 +46,7 @@ export interface Project {
   chefDeProjet: string;
   chefDeProjetNom: string;
   statut: 'Planifié' | 'En cours' | 'Terminé' | 'En Retard';
+  visibilite: 'PUBLIC' | 'PRIVE';
   progression: number;
   membres: ProjectMember[];
   ressources: { nom: string; lien: string }[];
@@ -95,11 +96,14 @@ export interface Event {
 
 export interface Notification {
   id: string;
+  userId?: string;
   type: 'task' | 'project' | 'event' | 'system';
   titre: string;
   message: string;
   date: string;
   lu: boolean;
+  relatedEntityType?: string;
+  relatedEntityId?: string;
 }
 
 export interface Recommendation {
@@ -110,5 +114,6 @@ export interface Recommendation {
   titre: string;
   categorie: string;
   competenceMatch: number;
+  explication: string;
   competences: string[];
 }

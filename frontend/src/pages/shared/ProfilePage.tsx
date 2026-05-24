@@ -9,6 +9,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { User, Mail, GraduationCap, Award, FolderKanban, Building2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { SmartImage } from '@/components/SmartImage';
+import { avatarPhoto, imageCandidates, organizationPhoto, projectPhoto } from '@/lib/images';
 
 function StudentProfile() {
   const { userEmail } = useAuth();
@@ -28,8 +30,11 @@ function StudentProfile() {
       {/* Profile Header */}
       <div className="bg-card rounded-xl border p-6">
         <div className="flex items-start gap-6">
-          <div className="h-20 w-20 rounded-2xl bg-primary/10 flex items-center justify-center">
-            <User className="h-10 w-10 text-primary" />
+          <div className="h-20 w-20 rounded-2xl bg-primary/10 overflow-hidden shrink-0">
+            <SmartImage
+              sources={imageCandidates(currentUser.avatar, avatarPhoto(currentUser.email))}
+              alt={`${currentUser.prenom} ${currentUser.nom}`}
+            />
           </div>
           <div className="flex-1">
             <h2 className="font-display text-xl font-bold">{currentUser.prenom} {currentUser.nom}</h2>
@@ -66,8 +71,13 @@ function StudentProfile() {
           {myProjects.map(p => (
             <div key={p.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
               <div className="flex items-center gap-3">
-                <FolderKanban className="h-4 w-4 text-primary" />
-                <span className="text-sm font-medium">{p.titre}</span>
+                <div className="h-10 w-14 rounded-md overflow-hidden bg-muted">
+                  <SmartImage sources={imageCandidates(undefined, projectPhoto(p.id || p.titre))} alt={p.titre} />
+                </div>
+                <div>
+                  <span className="text-sm font-medium">{p.titre}</span>
+                  <p className="text-xs text-muted-foreground">{p.categorie}</p>
+                </div>
               </div>
               <Badge variant="outline">{p.statut}</Badge>
             </div>
@@ -93,6 +103,7 @@ function StudentProfile() {
 
 function OrgProfile() {
   const { userName, userEmail } = useAuth();
+  const { data: currentUser } = useQuery<UserType>({ queryKey: ['currentUser'], queryFn: fetchCurrentUser });
   const { data: projects = [] } = useQuery<Project[]>({
     queryKey: ['projects', 'org', userName],
     queryFn: () => fetchProjectsByOrganisation(userName),
@@ -108,14 +119,17 @@ function OrgProfile() {
     <div className="space-y-6">
       <div className="bg-card rounded-xl border p-6">
         <div className="flex items-start gap-6">
-          <div className="h-20 w-20 rounded-2xl bg-secondary/10 flex items-center justify-center">
-            <Building2 className="h-10 w-10 text-secondary" />
+          <div className="h-20 w-20 rounded-2xl bg-secondary/10 overflow-hidden shrink-0">
+            <SmartImage
+              sources={imageCandidates(currentUser?.logo, organizationPhoto(userName || userEmail))}
+              alt={userName || 'Organisation'}
+            />
           </div>
           <div className="flex-1">
-            <h2 className="font-display text-xl font-bold">Club IEEE FST</h2>
-            <p className="text-sm text-muted-foreground mt-1">Type: Club</p>
-            <p className="text-sm text-muted-foreground">Responsable: Mohamed Saidi</p>
-            <p className="text-sm text-muted-foreground">Email: ieee@fst.utm.tn</p>
+            <h2 className="font-display text-xl font-bold">{userName || currentUser?.email}</h2>
+            <p className="text-sm text-muted-foreground mt-1">Type: {currentUser?.organizationType || 'Organisation'}</p>
+            <p className="text-sm text-muted-foreground">Responsable: {currentUser?.responsableNom || 'Non renseigne'}</p>
+            <p className="text-sm text-muted-foreground">Email: {currentUser?.responsableEmail || userEmail}</p>
           </div>
           <Button variant="outline" size="sm">Modifier</Button>
         </div>

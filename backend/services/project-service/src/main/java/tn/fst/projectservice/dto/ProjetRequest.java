@@ -16,6 +16,7 @@ public class ProjetRequest {
     private LocalDate deadline;
     private boolean validite;
     private StatusProjet status;
+    private VisibiliteProjet visibilite;
     private List<String> membres;
     private List<Tache> taches;
     private List<Objectif> objectifs;

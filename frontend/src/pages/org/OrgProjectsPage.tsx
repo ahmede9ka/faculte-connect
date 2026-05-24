@@ -15,6 +15,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Search, Eye, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { SmartImage } from '@/components/SmartImage';
+import { imageCandidates, projectPhoto } from '@/lib/images';
 
 export default function OrgProjectsPage() {
   const [search, setSearch] = useState('');
@@ -133,7 +135,15 @@ export default function OrgProjectsPage() {
                   {filtered.map(p => (
                     <tr key={p.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
                       <td className="px-5 py-4">
-                        <Link to={`/projects/${p.id}`} className="font-medium text-sm hover:text-primary">{p.titre}</Link>
+                        <Link to={`/projects/${p.id}`} className="flex items-center gap-3 group">
+                          <div className="h-12 w-16 rounded-md overflow-hidden bg-muted shrink-0">
+                            <SmartImage sources={imageCandidates(undefined, projectPhoto(p.id || p.titre))} alt={p.titre} />
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm group-hover:text-primary">{p.titre}</p>
+                            <p className="text-xs text-muted-foreground">{p.categorie}</p>
+                          </div>
+                        </Link>
                       </td>
                       <td className="px-5 py-4 text-sm text-muted-foreground">{p.chefDeProjetNom}</td>
                       <td className="px-5 py-4">

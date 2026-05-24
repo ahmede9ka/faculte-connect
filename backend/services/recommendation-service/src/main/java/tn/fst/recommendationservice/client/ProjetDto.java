@@ -23,6 +23,7 @@ public class ProjetDto {
     private boolean validite;
     private String status;
     private String approbation;
+    private String visibilite;
     private int progression;
     private List<String> membres;
 }

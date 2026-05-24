@@ -8,6 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AdminUser, deleteUser, fetchAdminStudents } from '@/lib/api';
 import { Search, User, GraduationCap, Trash2, Eye } from 'lucide-react';
 import { toast } from 'sonner';
+import { SmartImage } from '@/components/SmartImage';
+import { avatarPhoto, imageCandidates } from '@/lib/images';
 
 export default function AdminStudentsPage() {
   const [search, setSearch] = useState('');
@@ -109,8 +111,8 @@ export default function AdminStudentsPage() {
                     <tr key={s.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                            <User className="h-4 w-4 text-primary" />
+                          <div className="h-9 w-9 rounded-full bg-primary/10 overflow-hidden shrink-0">
+                            <SmartImage sources={imageCandidates(s.avatar, avatarPhoto(s.email))} alt={s.name || s.email} />
                           </div>
                           <div>
                             <p className="font-medium text-sm">{s.name}</p>

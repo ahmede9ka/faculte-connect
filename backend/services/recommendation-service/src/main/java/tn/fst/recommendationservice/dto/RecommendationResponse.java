@@ -22,6 +22,7 @@ public class RecommendationResponse {
     private String titre;
     private String categorie;
     private int competenceMatch;
+    private String explication;
     private LocalDateTime dateRecommendation;
     private List<String> competencesMatched;
 }

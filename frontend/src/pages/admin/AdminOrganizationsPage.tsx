@@ -9,6 +9,8 @@ import { AdminUser, deleteUser, fetchAdminOrganizations } from '@/lib/api';
 import { Search, Building2, Trash2, Eye, FolderKanban, CalendarDays } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
+import { SmartImage } from '@/components/SmartImage';
+import { imageCandidates, organizationPhoto } from '@/lib/images';
 
 export default function AdminOrganizationsPage() {
   const [search, setSearch] = useState('');
@@ -105,8 +107,8 @@ export default function AdminOrganizationsPage() {
               <div key={o.id} className="bg-card rounded-xl border p-5 hover:shadow-elevated transition-shadow space-y-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <div className="h-11 w-11 rounded-xl bg-secondary/10 flex items-center justify-center shrink-0">
-                      <Building2 className="h-5 w-5 text-secondary" />
+                    <div className="h-11 w-11 rounded-xl bg-secondary/10 overflow-hidden shrink-0">
+                      <SmartImage sources={imageCandidates(o.logo, organizationPhoto(o.email || o.name))} alt={o.name || o.email} />
                     </div>
                     <div>
                       <p className="font-semibold text-sm">{o.name}</p>

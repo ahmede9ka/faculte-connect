@@ -8,6 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { CalendarDays, MapPin, Users, Download } from 'lucide-react';
 import { toast } from 'sonner';
+import { SmartImage } from '@/components/SmartImage';
+import { eventPhoto, imageCandidates } from '@/lib/images';
 
 export default function StudentEventsPage() {
   const { userEmail } = useAuth();
@@ -90,8 +92,8 @@ export default function StudentEventsPage() {
                 <Dialog key={e.id}>
                   <DialogTrigger asChild>
                     <div className={`bg-card rounded-xl border overflow-hidden shadow-card hover:shadow-elevated transition-shadow cursor-pointer ${isJoined ? 'border-primary/40' : ''}`}>
-                      <div className="h-32 gradient-hero flex items-center justify-center relative">
-                        <CalendarDays className="h-10 w-10 text-primary-foreground/40" />
+                      <div className="h-36 bg-muted relative">
+                        <SmartImage sources={imageCandidates(e.affiche, eventPhoto(e.id || e.titre))} alt={e.titre} />
                         {isJoined && (
                           <span className="absolute top-3 right-3 bg-primary text-primary-foreground text-xs px-2 py-1 rounded-full font-medium">
                             Inscrit
@@ -129,6 +131,9 @@ export default function StudentEventsPage() {
                       <DialogTitle className="font-display">{e.titre}</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4">
+                      <div className="h-44 overflow-hidden rounded-lg bg-muted">
+                        <SmartImage sources={imageCandidates(e.affiche, eventPhoto(e.id || e.titre))} alt={e.titre} />
+                      </div>
                       <p className="text-sm text-muted-foreground">{e.description}</p>
                       <div className="grid grid-cols-2 gap-3 text-sm">
                         <div className="flex items-center gap-2"><CalendarDays className="h-4 w-4 text-muted-foreground" /> {new Date(e.dateHeure).toLocaleDateString('fr-FR')}</div>

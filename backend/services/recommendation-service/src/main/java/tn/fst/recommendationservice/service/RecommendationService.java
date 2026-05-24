@@ -110,10 +110,18 @@ public class RecommendationService {
 
     public List<RecommendationResponse> getOrGenerate(String userId) {
         List<RecommendationResponse> recommendations = getByUserId(userId);
-        if (recommendations.isEmpty()) {
+        if (recommendations.isEmpty() || recommendations.stream().anyMatch(this::needsSpecificExplanation)) {
             return generate(userId);
         }
         return recommendations;
+    }
+
+    private boolean needsSpecificExplanation(RecommendationResponse recommendation) {
+        String explanation = recommendation.getExplication();
+        return explanation == null
+                || explanation.isBlank()
+                || explanation.startsWith("Nous recommandons")
+                || explanation.startsWith("Cette recommandation");
     }
 
     public List<RecommendationResponse> refresh(String userId) {
@@ -148,7 +156,107 @@ public class RecommendationService {
 
         double availabilityBoost = candidate.type().equals("PROJECT") ? projectAvailabilityBoost(candidate.project()) : 8.0;
         double finalScore = (semanticScore * 0.55) + (skillScore * 0.30) + (experienceScore * 0.15) + availabilityBoost;
-        return new ScoredCandidate(candidate, Math.min(finalScore, 100.0), matchedCompetences);
+        double cappedScore = Math.min(finalScore, 100.0);
+        List<String> sharedTerms = topSharedTerms(profileVector, candidateVector, matchedCompetences);
+        return new ScoredCandidate(
+                candidate,
+                cappedScore,
+                matchedCompetences,
+                explanationFor(candidate, cappedScore, semanticScore, skillScore, experienceScore, availabilityBoost, matchedCompetences, sharedTerms)
+        );
+    }
+
+    private String explanationFor(
+            Candidate candidate,
+            double score,
+            double semanticScore,
+            double skillScore,
+            double experienceScore,
+            double availabilityBoost,
+            List<String> matchedCompetences,
+            List<String> sharedTerms
+    ) {
+        List<String> details = new ArrayList<>();
+        String typeLabel = candidate.type().equals("PROJECT") ? "ce projet" : "cet evenement";
+        String category = safe(candidate.category());
+
+        if (!matchedCompetences.isEmpty()) {
+            String skills = matchedCompetences.stream()
+                    .limit(4)
+                    .collect(Collectors.joining(", "));
+            details.add("competences retrouvees: " + skills + " (" + Math.round(skillScore) + "% de correspondance competences)");
+        }
+
+        if (!sharedTerms.isEmpty()) {
+            details.add("mots-cles communs avec votre profil: " + String.join(", ", sharedTerms));
+        }
+
+        if (experienceScore >= 20.0) {
+            details.add("experience similaire detectee avec vos anciens projets (" + Math.round(experienceScore) + "%)");
+        }
+
+        if (candidate.type().equals("PROJECT")) {
+            ProjetDto project = candidate.project();
+            String status = normalize(project != null ? project.getStatus() : null);
+            String approbation = normalize(project != null ? project.getApprobation() : null);
+            String organisation = safe(project != null ? project.getOrganisation() : null);
+            if (!category.isBlank()) {
+                details.add("categorie/organisation: " + category);
+            } else if (!organisation.isBlank()) {
+                details.add("organisation: " + organisation);
+            }
+            if (approbation.equals("approuve")) {
+                details.add("projet approuve");
+            }
+            if (status.equals("en cours") || status.equals("en attente")) {
+                details.add("statut disponible: " + safe(project.getStatus()));
+            }
+            if (project != null && project.getDeadline() != null) {
+                details.add("deadline: " + project.getDeadline());
+            }
+        } else if (candidate.event() != null) {
+            EventDto event = candidate.event();
+            if (!safe(event.getType()).isBlank()) {
+                details.add("type d'evenement: " + event.getType());
+            }
+            if (!safe(event.getLieu()).isBlank()) {
+                details.add("lieu: " + event.getLieu());
+            }
+            if (event.getDateHeure() != null) {
+                details.add("date: " + event.getDateHeure());
+            }
+        }
+
+        if (details.isEmpty()) {
+            details.add("similarite textuelle avec votre profil: " + Math.round(semanticScore) + "%");
+        } else {
+            details.add("similarite globale profil/contenu: " + Math.round(semanticScore) + "%");
+        }
+
+        details.add("bonus disponibilite: +" + Math.round(availabilityBoost));
+        return "Recommande: " + candidate.title() + " (" + typeLabel + "). "
+                + String.join("; ", details)
+                + ". Score final: " + Math.round(score) + "%.";
+    }
+
+    private List<String> topSharedTerms(
+            Map<String, Double> profileVector,
+            Map<String, Double> candidateVector,
+            List<String> matchedCompetences
+    ) {
+        Set<String> competenceTerms = matchedCompetences.stream()
+                .flatMap(competence -> keywords(competence).stream())
+                .collect(Collectors.toSet());
+
+        return candidateVector.keySet().stream()
+                .filter(profileVector::containsKey)
+                .filter(term -> !competenceTerms.contains(term))
+                .sorted((left, right) -> Double.compare(
+                        profileVector.getOrDefault(right, 0.0) * candidateVector.getOrDefault(right, 0.0),
+                        profileVector.getOrDefault(left, 0.0) * candidateVector.getOrDefault(left, 0.0)
+                ))
+                .limit(5)
+                .collect(Collectors.toList());
     }
 
     private Map<String, Double> vectorize(String text, List<Candidate> candidates) {
@@ -211,7 +319,8 @@ public class RecommendationService {
                 project.getCategorie(),
                 project.getOrganisation(),
                 project.getStatus(),
-                project.getApprobation()
+                project.getApprobation(),
+                project.getVisibilite()
         );
     }
 
@@ -237,9 +346,11 @@ public class RecommendationService {
 
         String status = normalize(project.getStatus());
         String approbation = normalize(project.getApprobation());
+        String visibilite = normalize(project.getVisibilite());
         return !status.equals("termine")
                 && !status.equals("annule")
-                && !approbation.equals("rejete");
+                && !approbation.equals("rejete")
+                && (visibilite.isBlank() || visibilite.equals("public"));
     }
 
     private boolean isAvailableEvent(EventDto event, String userId) {
@@ -350,11 +461,17 @@ public class RecommendationService {
 
     private List<ProjetDto> safeProjects() {
         try {
-            List<ProjetDto> projects = projectServiceClient.getAllProjets();
+            List<ProjetDto> projects = projectServiceClient.getPublicProjets();
             return projects != null ? projects : Collections.emptyList();
         } catch (Exception e) {
-            log.warn("Unable to fetch projects for recommendations", e);
-            return Collections.emptyList();
+            log.warn("Unable to fetch public projects for recommendations; falling back to all projects", e);
+            try {
+                List<ProjetDto> projects = projectServiceClient.getAllProjets();
+                return projects != null ? projects : Collections.emptyList();
+            } catch (Exception fallbackException) {
+                log.warn("Unable to fetch projects for recommendations", fallbackException);
+                return Collections.emptyList();
+            }
         }
     }
 
@@ -398,6 +515,7 @@ public class RecommendationService {
                 .titre(candidate.title())
                 .categorie(candidate.category())
                 .competenceMatch((int) Math.round(scored.score()))
+                .explication(scored.explanation())
                 .dateRecommendation(LocalDateTime.now())
                 .competencesMatched(scored.matchedCompetences());
 
@@ -421,6 +539,7 @@ public class RecommendationService {
                 .titre(recommendation.getTitre())
                 .categorie(recommendation.getCategorie())
                 .competenceMatch(recommendation.getCompetenceMatch())
+                .explication(recommendation.getExplication())
                 .dateRecommendation(recommendation.getDateRecommendation())
                 .competencesMatched(recommendation.getCompetencesMatched())
                 .build();
@@ -449,6 +568,6 @@ public class RecommendationService {
         }
     }
 
-    private record ScoredCandidate(Candidate candidate, double score, List<String> matchedCompetences) {
+    private record ScoredCandidate(Candidate candidate, double score, List<String> matchedCompetences, String explanation) {
     }
 }

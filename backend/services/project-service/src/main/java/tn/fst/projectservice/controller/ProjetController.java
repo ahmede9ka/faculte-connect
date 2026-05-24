@@ -15,6 +15,7 @@ import tn.fst.projectservice.entity.Projet;
 import tn.fst.projectservice.entity.StatusApprobation;
 import tn.fst.projectservice.entity.StatusProjet;
 import tn.fst.projectservice.entity.Tache;
+import tn.fst.projectservice.entity.VisibiliteProjet;
 import tn.fst.projectservice.service.ProjetService;
 
 import java.util.List;
@@ -38,6 +39,11 @@ public class ProjetController {
     @GetMapping
     public ResponseEntity<List<Projet>> getAll() {
         return ResponseEntity.ok(projetService.getAll());
+    }
+
+    @GetMapping("/public")
+    public ResponseEntity<List<Projet>> getPublicProjects() {
+        return ResponseEntity.ok(projetService.getPublicProjects());
     }
 
     @GetMapping("/{id}")
@@ -68,6 +74,11 @@ public class ProjetController {
     @GetMapping("/approbation/{approbation}")
     public ResponseEntity<List<Projet>> getByApprobation(@PathVariable StatusApprobation approbation) {
         return ResponseEntity.ok(projetService.getByApprobation(approbation));
+    }
+
+    @GetMapping("/visibilite/{visibilite}")
+    public ResponseEntity<List<Projet>> getByVisibilite(@PathVariable VisibiliteProjet visibilite) {
+        return ResponseEntity.ok(projetService.getByVisibilite(visibilite));
     }
 
     @PatchMapping("/{id}/approbation")

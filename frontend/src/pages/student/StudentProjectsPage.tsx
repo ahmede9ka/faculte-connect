@@ -11,6 +11,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, Eye, FolderKanban } from 'lucide-react';
+import { SmartImage } from '@/components/SmartImage';
+import { imageCandidates, projectPhoto } from '@/lib/images';
 
 export default function StudentProjectsPage() {
   const { userEmail } = useAuth();
@@ -109,7 +111,15 @@ export default function StudentProjectsPage() {
                     return (
                       <tr key={p.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
                         <td className="px-5 py-4">
-                          <Link to={`/projects/${p.id}`} className="font-medium text-sm hover:text-primary">{p.titre}</Link>
+                          <Link to={`/projects/${p.id}`} className="flex items-center gap-3 group">
+                            <div className="h-12 w-16 rounded-md overflow-hidden bg-muted shrink-0">
+                              <SmartImage sources={imageCandidates(undefined, projectPhoto(p.id || p.titre))} alt={p.titre} />
+                            </div>
+                            <div>
+                              <p className="font-medium text-sm group-hover:text-primary">{p.titre}</p>
+                              <p className="text-xs text-muted-foreground">{p.categorie}</p>
+                            </div>
+                          </Link>
                         </td>
                         <td className="px-5 py-4">
                           <span className={`text-xs font-medium px-2 py-1 rounded-full ${isChef ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>

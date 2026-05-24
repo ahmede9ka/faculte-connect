@@ -5,8 +5,10 @@ import { Recommendation } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
-import { Lightbulb, ArrowRight, RefreshCw } from "lucide-react";
+import { Lightbulb, ArrowRight, RefreshCw, Info } from "lucide-react";
 import { toast } from "sonner";
+import { SmartImage } from "@/components/SmartImage";
+import { eventPhoto, imageCandidates, projectPhoto } from "@/lib/images";
 
 export default function RecommendationsPage() {
   const queryClient = useQueryClient();
@@ -93,8 +95,15 @@ export default function RecommendationsPage() {
               return (
                 <div
                   key={r.id}
-                  className="bg-card rounded-xl border p-6 shadow-card hover:shadow-elevated transition-shadow"
+                  className="bg-card rounded-xl border overflow-hidden shadow-card hover:shadow-elevated transition-shadow"
                 >
+                  <div className="h-36 bg-muted">
+                    <SmartImage
+                      sources={imageCandidates(undefined, isEvent ? eventPhoto(r.eventId || r.titre) : projectPhoto(r.projetId || r.titre))}
+                      alt={r.titre}
+                    />
+                  </div>
+                  <div className="p-6">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
                       <Badge variant="secondary" className="text-xs">
@@ -115,6 +124,12 @@ export default function RecommendationsPage() {
                   <h3 className="font-display font-semibold text-lg mb-2">
                     {r.titre}
                   </h3>
+                  <div className="mb-4 rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground">
+                    <div className="flex items-start gap-2">
+                      <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                      <p>{r.explication || "Cette recommandation correspond a votre profil et a vos competences."}</p>
+                    </div>
+                  </div>
                   <div className="flex flex-wrap gap-1.5 mb-4">
                     {r.competences.map((c) => (
                       <Badge
@@ -135,6 +150,7 @@ export default function RecommendationsPage() {
                       {actionLabel} <ArrowRight className="h-3.5 w-3.5" />
                     </Button>
                   </Link>
+                  </div>
                 </div>
               );
             })}

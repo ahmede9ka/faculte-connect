@@ -8,7 +8,7 @@ spring:
   datasource:
     url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/auth_db?createDatabaseIfNotExist=true
     username: root
-    password: ${MYSQL_PASSWORD:letmein}
+    password: ${MYSQL_PASSWORD:foufoufourat123}
 
   jpa:
     hibernate:

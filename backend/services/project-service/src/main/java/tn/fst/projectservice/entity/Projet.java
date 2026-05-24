@@ -22,6 +22,7 @@ public class Projet {
     private boolean validite;
     private StatusProjet status;
     private StatusApprobation approbation;
+    private VisibiliteProjet visibilite;
     private String commentaireAdmin;
     private int progression;                          // 0-100%
     private List<String> membres;

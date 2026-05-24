@@ -48,6 +48,7 @@ public class ProjetService {
                 .validite(request.isValidite())
                 .status(StatusProjet.EN_ATTENTE)
                 .approbation(StatusApprobation.EN_ATTENTE)
+                .visibilite(request.getVisibilite() != null ? request.getVisibilite() : VisibiliteProjet.PUBLIC)
                 .progression(0)
                 .membres(request.getMembres() != null ? request.getMembres() : new ArrayList<>())
                 .taches(request.getTaches() != null ? request.getTaches() : new ArrayList<>())
@@ -85,6 +86,16 @@ public class ProjetService {
 
     public List<Projet> getByApprobation(StatusApprobation approbation) {
         return projetRepository.findByApprobation(approbation);
+    }
+
+    public List<Projet> getByVisibilite(VisibiliteProjet visibilite) {
+        return projetRepository.findByVisibilite(visibilite);
+    }
+
+    public List<Projet> getPublicProjects() {
+        return projetRepository.findAll().stream()
+                .filter(projet -> projet.getVisibilite() == null || projet.getVisibilite() == VisibiliteProjet.PUBLIC)
+                .toList();
     }
 
     // ✅ Admin approval
@@ -127,6 +138,9 @@ public class ProjetService {
         }
         if (request.getStatus() != null) {
             projet.setStatus(request.getStatus());
+        }
+        if (request.getVisibilite() != null) {
+            projet.setVisibilite(request.getVisibilite());
         }
         if (request.getMembres() != null) {
             projet.setMembres(request.getMembres());

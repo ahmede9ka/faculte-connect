@@ -12,6 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Plus, User, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { SmartImage } from '@/components/SmartImage';
+import { avatarPhoto, imageCandidates } from '@/lib/images';
 
 function isTaskLate(taskDeadline?: string, status?: string, progression?: number) {
   if (!taskDeadline) return false;
@@ -233,8 +235,8 @@ export default function MembersPage() {
                 return (
                   <div key={m.id} className="flex items-center justify-between px-5 py-4 hover:bg-muted/20 transition-colors">
                     <div className="flex items-center gap-4">
-                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                        <User className="h-5 w-5 text-primary" />
+                      <div className="h-10 w-10 rounded-full bg-primary/10 overflow-hidden shrink-0">
+                        <SmartImage sources={imageCandidates(m.avatar, avatarPhoto(m.email))} alt={m.nom || m.email} />
                       </div>
                       <div>
                         <p className="font-medium text-sm">{m.nom}</p>

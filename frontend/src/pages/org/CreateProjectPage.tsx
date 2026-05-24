@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { createProject } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { toast } from 'sonner';
@@ -20,6 +21,7 @@ export default function CreateProjectPage() {
   const [organisation, setOrganisation] = useState('');
   const [deadline, setDeadline] = useState('');
   const [chefProjet, setChefProjet] = useState('');
+  const [visibilite, setVisibilite] = useState<'PUBLIC' | 'PRIVE'>('PUBLIC');
   const [ressourceNom, setRessourceNom] = useState('');
   const [ressourceLien, setRessourceLien] = useState('');
 
@@ -62,6 +64,7 @@ export default function CreateProjectPage() {
       organisation,
       deadline,
       validite: true,
+      visibilite,
       ressources: ressourceNom.trim() || ressourceLien.trim()
         ? [{ nom: ressourceNom.trim() || 'Ressource', valeur: ressourceLien.trim() }]
         : [],
@@ -111,6 +114,18 @@ export default function CreateProjectPage() {
           <div className="space-y-2">
             <Label>Chef de projet (Email)</Label>
             <Input value={chefProjet} readOnly />
+          </div>
+          <div className="space-y-2">
+            <Label>VisibilitÃ©</Label>
+            <Select value={visibilite} onValueChange={(value) => setVisibilite(value as 'PUBLIC' | 'PRIVE')}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="PUBLIC">Public</SelectItem>
+                <SelectItem value="PRIVE">PrivÃ©</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-2">
             <Label>Ressource</Label>

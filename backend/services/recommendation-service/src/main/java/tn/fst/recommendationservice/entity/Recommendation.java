@@ -35,6 +35,8 @@ public class Recommendation {
 
     private int competenceMatch; // 0-100%
 
+    private String explication;
+
     @Builder.Default
     private LocalDateTime dateRecommendation = LocalDateTime.now();
 

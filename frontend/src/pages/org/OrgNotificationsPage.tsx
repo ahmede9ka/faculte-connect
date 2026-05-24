@@ -4,6 +4,7 @@ import { useAuth } from '@/lib/auth-context';
 import {
   fetchNotificationsForUsers, markNotificationAsRead,
   markAllNotificationsAsRead, deleteNotification,
+  addProjectMember, createNotification,
 } from '@/lib/api';
 import { Notification } from '@/lib/types';
 import { Bell, CheckCheck, Trash2, ListTodo, FolderKanban, CalendarDays, Settings } from 'lucide-react';
@@ -18,6 +19,10 @@ const typeColors = {
   event: 'bg-success/10 text-success',
   system: 'bg-muted text-muted-foreground',
 };
+
+function extractEmail(value: string) {
+  return value.match(/[^\s@]+@[^\s@]+\.[^\s@.,;:]+/)?.[0] || '';
+}
 
 export default function OrgNotificationsPage() {
   const { userEmail, userName } = useAuth();
@@ -60,6 +65,37 @@ export default function OrgNotificationsPage() {
     },
   });
 
+  const approveJoinMutation = useMutation({
+    mutationFn: async (notification: Notification) => {
+      const requesterEmail = extractEmail(notification.message);
+      const projectId = notification.relatedEntityId;
+
+      if (!requesterEmail || !projectId) {
+        throw new Error('Demande incomplete');
+      }
+
+      await addProjectMember(projectId, requesterEmail);
+      await markNotificationAsRead(notification.id);
+      await createNotification({
+        userId: requesterEmail,
+        titre: 'Demande de projet approuvee',
+        message: `Votre demande pour rejoindre le projet a ete approuvee.`,
+        type: 'SUCCESS',
+        relatedEntityType: 'PROJECT',
+        relatedEntityId: projectId,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications', ...notificationsUserIds] });
+      queryClient.invalidateQueries({ queryKey: ['unreadCount', notificationsUserId] });
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      toast.success('Demande approuvee');
+    },
+    onError: () => {
+      toast.error("Impossible d'approuver la demande");
+    },
+  });
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -81,6 +117,7 @@ export default function OrgNotificationsPage() {
           <div className="space-y-3">
             {notifications.map(n => {
               const Icon = typeIcons[n.type];
+              const isJoinRequest = n.relatedEntityType === 'PROJECT_JOIN_REQUEST';
               return (
                 <div key={n.id} className={cn('bg-card rounded-xl border p-4 flex items-start gap-4', !n.lu && 'border-primary/30 bg-primary/5')}>
                   <div className={cn('h-10 w-10 rounded-lg flex items-center justify-center shrink-0', typeColors[n.type])}>
@@ -95,6 +132,15 @@ export default function OrgNotificationsPage() {
                     <p className="text-xs text-muted-foreground mt-1">{new Date(n.date).toLocaleDateString('fr-FR')}</p>
                   </div>
                   <div className="flex gap-1 shrink-0">
+                    {isJoinRequest && (
+                      <Button
+                        size="sm"
+                        onClick={() => approveJoinMutation.mutate(n)}
+                        disabled={approveJoinMutation.isPending}
+                      >
+                        Approuver
+                      </Button>
+                    )}
                     {!n.lu && (
                       <Button variant="ghost" size="sm" onClick={() => markAsReadMutation.mutate(n.id)}>
                         <CheckCheck className="h-4 w-4" />

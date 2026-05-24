@@ -13,6 +13,7 @@ type ProjetRaw = {
   organisation?: unknown;
   deadline?: unknown;
   status?: unknown;
+  visibilite?: unknown;
   progression?: unknown;
   membres?: unknown;
   ressources?: unknown;
@@ -267,6 +268,7 @@ function mapProject(p: ProjetRaw): Project {
     chefDeProjet: chefEmail,
     chefDeProjetNom: chefEmail,
     statut: mapProjectStatus(asString(p.status)),
+    visibilite: asString(p.visibilite).toUpperCase() === "PRIVE" ? "PRIVE" : "PUBLIC",
     progression: asNumber(p.progression),
     membres: emails.map((email) => ({
       id: email,
@@ -491,6 +493,7 @@ export const updateProject = async (
     organisation: string;
     deadline: string;
     status?: string;
+    visibilite?: "PUBLIC" | "PRIVE";
     membres?: string[];
     objectifs?: string[];
     ressources?: Array<{ nom: string; valeur: string }>;
@@ -503,6 +506,7 @@ export const updateProject = async (
     body: JSON.stringify({
       ...projectData,
       validite: true,
+      visibilite: projectData.visibilite,
       membres: projectData.membres,
       objectifs: projectData.objectifs,
       ressources: projectData.ressources,
@@ -558,6 +562,7 @@ export const createProject = async (projectData: {
   organisation: string;
   deadline: string;
   validite: boolean;
+  visibilite?: "PUBLIC" | "PRIVE";
   membres?: string[];
   objectifs?: string[];
   ressources?: Array<{ nom: string; valeur: string }>;
@@ -570,6 +575,7 @@ export const createProject = async (projectData: {
     organisation: projectData.organisation,
     deadline: projectData.deadline,
     validite: projectData.validite,
+    visibilite: projectData.visibilite ?? "PUBLIC",
     // FIX: always send empty arrays/maps so the backend never receives null
     membres: projectData.membres ?? [],
     taches: [],
@@ -894,17 +900,21 @@ function mapNotification(n: NotificationRaw): Notification {
     WARNING: "system",
     ERROR: "system",
     PROJECT: "project",
+    PROJECT_JOIN_REQUEST: "project",
     EVENT: "event",
     TASK: "task",
   };
 
   return {
     id: asString(n.id),
+    userId: asString(n.userId),
     type: typeMap[asString(n.relatedEntityType || n.type)] || "system",
     titre: asString(n.titre),
     message: asString(n.message),
     date: asString(n.timestamp),
     lu: Boolean(n.lu),
+    relatedEntityType: asString(n.relatedEntityType),
+    relatedEntityId: asString(n.relatedEntityId),
   };
 }
 
@@ -1030,6 +1040,7 @@ type RecommendationRaw = {
   titre?: unknown;
   categorie?: unknown;
   competenceMatch?: unknown;
+  explication?: unknown;
   dateRecommendation?: unknown;
   competencesMatched?: unknown;
 };
@@ -1046,6 +1057,7 @@ function mapRecommendation(r: RecommendationRaw): Recommendation {
     titre: asString(r.titre),
     categorie: asString(r.categorie),
     competenceMatch: asNumber(r.competenceMatch),
+    explication: asString(r.explication),
     competences: Array.isArray(r.competencesMatched)
       ? (r.competencesMatched as unknown[]).map(asString)
       : [],

@@ -9,6 +9,8 @@ import { Project, Event } from '@/lib/types';
 import { FolderKanban, ListTodo, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth-context';
+import { SmartImage } from '@/components/SmartImage';
+import { eventPhoto, imageCandidates, projectPhoto } from '@/lib/images';
 
 export default function OrgDashboardPage() {
   const { userName, userEmail } = useAuth();
@@ -53,9 +55,14 @@ export default function OrgDashboardPage() {
             <div className="space-y-3">
               {projects.map(p => (
                 <Link key={p.id} to={`/projects/${p.id}`} className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm truncate">{p.titre}</p>
-                    <p className="text-xs text-muted-foreground">{p.chefDeProjetNom}</p>
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="h-12 w-16 rounded-md overflow-hidden bg-muted shrink-0">
+                      <SmartImage sources={imageCandidates(undefined, projectPhoto(p.id || p.titre))} alt={p.titre} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm truncate">{p.titre}</p>
+                      <p className="text-xs text-muted-foreground">{p.chefDeProjetNom}</p>
+                    </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <StatusBadge status={p.statut} />
@@ -70,12 +77,17 @@ export default function OrgDashboardPage() {
             <h2 className="font-display font-semibold text-lg mb-4">Événements créés</h2>
             <div className="space-y-3">
               {events.map(e => (
-                <div key={e.id} className="p-3 rounded-lg bg-muted/30">
+                <div key={e.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
+                  <div className="h-12 w-16 rounded-md overflow-hidden bg-muted shrink-0">
+                    <SmartImage sources={imageCandidates(e.affiche, eventPhoto(e.id || e.titre))} alt={e.titre} />
+                  </div>
+                  <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
                     <p className="font-medium text-sm">{e.titre}</p>
                     <span className="text-xs text-muted-foreground">{new Date(e.dateHeure).toLocaleDateString('fr-FR')}</span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">{e.nombrePlaces - e.placesRestantes} participants</p>
+                  </div>
                 </div>
               ))}
             </div>

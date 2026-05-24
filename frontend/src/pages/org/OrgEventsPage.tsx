@@ -12,6 +12,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { CalendarDays, MapPin, Plus, Users } from 'lucide-react';
 import { toast } from 'sonner';
+import { SmartImage } from '@/components/SmartImage';
+import { eventPhoto, imageCandidates } from '@/lib/images';
 
 function toInputDateTime(value: string) {
   const date = new Date(value);
@@ -144,7 +146,14 @@ export default function OrgEventsPage() {
                     const isFull = e.placesRestantes === 0;
                     return (
                       <tr key={e.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
-                        <td className="px-5 py-4 font-medium text-sm">{e.titre}</td>
+                        <td className="px-5 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="h-12 w-16 rounded-md overflow-hidden bg-muted shrink-0">
+                              <SmartImage sources={imageCandidates(e.affiche, eventPhoto(e.id || e.titre))} alt={e.titre} />
+                            </div>
+                            <span className="font-medium text-sm">{e.titre}</span>
+                          </div>
+                        </td>
                         <td className="px-5 py-4"><Badge variant="outline" className="text-xs">{e.type}</Badge></td>
                         <td className="px-5 py-4 text-sm text-muted-foreground">{new Date(e.dateHeure).toLocaleDateString('fr-FR')}</td>
                         <td className="px-5 py-4 text-sm text-muted-foreground">{e.lieu}</td>
@@ -163,6 +172,9 @@ export default function OrgEventsPage() {
                               <DialogContent className="max-w-lg">
                                 <DialogHeader><DialogTitle>{e.titre}</DialogTitle></DialogHeader>
                                 <div className="space-y-3 text-sm">
+                                  <div className="h-40 overflow-hidden rounded-lg bg-muted">
+                                    <SmartImage sources={imageCandidates(e.affiche, eventPhoto(e.id || e.titre))} alt={e.titre} />
+                                  </div>
                                   <p className="text-muted-foreground">{e.description || 'Aucune description'}</p>
                                   <div className="grid grid-cols-2 gap-3">
                                     <div><p className="text-xs text-muted-foreground">Date</p><p>{new Date(e.dateHeure).toLocaleString('fr-FR')}</p></div>

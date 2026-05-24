@@ -20,6 +20,8 @@ import {
   Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SmartImage } from "@/components/SmartImage";
+import { eventPhoto, imageCandidates, projectPhoto } from "@/lib/images";
 
 export default function StudentDashboardPage() {
   const { data: projects = [] } = useQuery<Project[]>({
@@ -89,13 +91,18 @@ export default function StudentDashboardPage() {
                 to={`/projects/${p.id}`}
                 className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors"
               >
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm truncate">{p.titre}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <StatusBadge status={p.statut} />
-                    <span className="text-xs text-muted-foreground">
-                      {p.progression}%
-                    </span>
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className="h-12 w-16 rounded-md overflow-hidden bg-muted shrink-0">
+                    <SmartImage sources={imageCandidates(undefined, projectPhoto(p.id || p.titre))} alt={p.titre} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-medium text-sm truncate">{p.titre}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <StatusBadge status={p.statut} />
+                      <span className="text-xs text-muted-foreground">
+                        {p.progression}%
+                      </span>
+                    </div>
                   </div>
                 </div>
                 <div className="w-24 ml-4">
@@ -187,7 +194,11 @@ export default function StudentDashboardPage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {events.slice(0, 2).map((e) => (
-              <div key={e.id} className="p-4 rounded-lg border bg-muted/20">
+              <div key={e.id} className="rounded-lg border bg-muted/20 overflow-hidden">
+                <div className="h-28 bg-muted">
+                  <SmartImage sources={imageCandidates(e.affiche, eventPhoto(e.id || e.titre))} alt={e.titre} />
+                </div>
+                <div className="p-4">
                 <h3 className="font-medium">{e.titre}</h3>
                 <p className="text-xs text-muted-foreground mt-1">
                   {e.lieu} · {new Date(e.dateHeure).toLocaleDateString("fr-FR")}
@@ -199,6 +210,7 @@ export default function StudentDashboardPage() {
                   <Button size="sm" variant="outline">
                     Participer
                   </Button>
+                </div>
                 </div>
               </div>
             ))}

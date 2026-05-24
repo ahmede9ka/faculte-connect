@@ -10,4 +10,7 @@ public interface ProjectServiceClient {
 
     @GetMapping("/projets")
     List<ProjetDto> getAllProjets();
+
+    @GetMapping("/projets/public")
+    List<ProjetDto> getPublicProjets();
 }

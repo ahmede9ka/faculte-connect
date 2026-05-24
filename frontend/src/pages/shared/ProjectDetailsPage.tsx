@@ -10,9 +10,7 @@ import {
   addTaskMembers,
   createNotification,
   removeProjectMember,
-  fetchMyProjects,
-  fetchProjects,
-  fetchProjectsByOrganisation,
+  fetchProject,
   fetchTasks,
 } from "@/lib/api";
 import { Project, Task } from "@/lib/types";
@@ -42,13 +40,16 @@ import {
   FileText,
   AlertTriangle,
   Clock,
+  UserPlus,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
+import { SmartImage } from "@/components/SmartImage";
+import { avatarPhoto, imageCandidates, projectPhoto } from "@/lib/images";
 
 export default function ProjectDetailsPage() {
   const { id } = useParams();
-  const { userRole, userName, userEmail } = useAuth();
+  const { userRole, userEmail } = useAuth();
   const queryClient = useQueryClient();
   const [taskTitle, setTaskTitle] = useState("");
   const [taskDescription, setTaskDescription] = useState("");
@@ -61,28 +62,27 @@ export default function ProjectDetailsPage() {
   const [assignEmails, setAssignEmails] = useState("");
   const [memberOpen, setMemberOpen] = useState(false);
   const [memberEmail, setMemberEmail] = useState("");
-  const { data: projects = [], isLoading: isLoadingProjects } = useQuery<
-    Project[]
-  >({
-    queryKey: ["projects", "details", userRole, userName],
-    queryFn: () => {
-      if (userRole === "organization")
-        return fetchProjectsByOrganisation(userName);
-      if (userRole === "student") return fetchMyProjects();
-      return fetchProjects();
-    },
-    enabled: userRole !== "organization" || Boolean(userName),
+  const joinRequestStorageKey = id && userEmail ? `join-request:${id}:${userEmail}` : "";
+  const [joinRequestSent, setJoinRequestSent] = useState(
+    () => Boolean(joinRequestStorageKey && localStorage.getItem(joinRequestStorageKey)),
+  );
+  const { data: project, isLoading: isLoadingProject } = useQuery<Project>({
+    queryKey: ["projects", "details", id],
+    queryFn: () => fetchProject(id ?? ""),
+    enabled: Boolean(id),
   });
   const { data: tasksData = [], isLoading: isLoadingTasks } = useQuery<Task[]>({
     queryKey: ["tasks"],
     queryFn: fetchTasks,
   });
 
-  const project = projects.find((p) => p.id === id);
+  const userTasks = tasksData.filter((t) => t.projectId === project?.id);
   const tasks =
     userRole === "organization" || userRole === "admin"
       ? (project?.taches ?? [])
-      : tasksData.filter((t) => t.projectId === project?.id);
+      : userTasks.length > 0
+        ? userTasks
+        : (project?.taches ?? []);
 
   const addTaskMutation = useMutation({
     mutationFn: (payload: {
@@ -102,9 +102,7 @@ export default function ProjectDetailsPage() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      queryClient.invalidateQueries({
-        queryKey: ["projects", "details", userRole, userName],
-      });
+      queryClient.invalidateQueries({ queryKey: ["projects", "details", id] });
       toast.success("Tache ajoutee");
       setTaskTitle("");
       setTaskDescription("");
@@ -141,7 +139,7 @@ export default function ProjectDetailsPage() {
       addProjectMember(projetId, email),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
-        queryKey: ["projects", "details", userRole, userName],
+        queryKey: ["projects", "details", id],
       });
       if (project?.id) {
         createNotification({
@@ -167,7 +165,7 @@ export default function ProjectDetailsPage() {
       removeProjectMember(projetId, email),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
-        queryKey: ["projects", "details", userRole, userName],
+        queryKey: ["projects", "details", id],
       });
       if (project?.id) {
         createNotification({
@@ -186,7 +184,46 @@ export default function ProjectDetailsPage() {
     onError: () => toast.error("Impossible de supprimer le membre"),
   });
 
-  if (isLoadingProjects)
+  const joinRequestMutation = useMutation({
+    mutationFn: async () => {
+      if (!project?.id || !userEmail) {
+        throw new Error("Missing project or user email");
+      }
+
+      const recipients = Array.from(
+        new Set([project.chefDeProjet, project.categorie].filter(Boolean)),
+      ).filter((recipient) => recipient.toLowerCase() !== userEmail.toLowerCase());
+
+      if (recipients.length === 0) {
+        throw new Error("No recipient for join request");
+      }
+
+      await Promise.all(
+        recipients.map((recipient) =>
+          createNotification({
+            userId: recipient,
+            titre: "Demande pour rejoindre un projet",
+            message: `${userEmail} souhaite rejoindre le projet "${project.titre}". Approuvez cette demande pour l'ajouter comme membre.`,
+            type: "INFO",
+            relatedEntityType: "PROJECT_JOIN_REQUEST",
+            relatedEntityId: project.id,
+          }),
+        ),
+      );
+    },
+    onSuccess: () => {
+      if (joinRequestStorageKey) {
+        localStorage.setItem(joinRequestStorageKey, "sent");
+      }
+      setJoinRequestSent(true);
+      toast.success("Demande envoyee");
+    },
+    onError: () => {
+      toast.error("Impossible d'envoyer la demande");
+    },
+  });
+
+  if (isLoadingProject)
     return (
       <DashboardLayout>
         <div className="p-8 text-center text-muted-foreground">
@@ -204,10 +241,34 @@ export default function ProjectDetailsPage() {
     );
 
   const isLate = project.statut === "En Retard";
-  const deadlineDate = new Date(project.dateFin);
-  const daysLeft = Math.ceil(
-    (deadlineDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
-  );
+  const deadlineDate = project.dateFin ? new Date(project.dateFin) : null;
+  const daysLeft =
+    deadlineDate && !Number.isNaN(deadlineDate.getTime())
+      ? Math.ceil((deadlineDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+      : null;
+  const canManageProject = userRole === "organization" || userRole === "admin";
+  const normalizedUserEmail = userEmail.toLowerCase();
+  const isProjectMember =
+    normalizedUserEmail.length > 0 &&
+    (project.chefDeProjet.toLowerCase() === normalizedUserEmail ||
+      project.membres.some((member) => member.email.toLowerCase() === normalizedUserEmail));
+  const canContribute = canManageProject || isProjectMember;
+  const canRequestToJoin =
+    userRole === "student" &&
+    !isProjectMember &&
+    project.visibilite === "PUBLIC" &&
+    Boolean(userEmail) &&
+    !joinRequestSent;
+  const historyItems = [
+    {
+      date: project.dateFin || "Aujourd'hui",
+      action: `Progression mise a jour a ${project.progression}%`,
+    },
+    {
+      date: project.dateDebut || "Aujourd'hui",
+      action: `Projet ${project.visibilite === "PRIVE" ? "prive" : "public"} cree`,
+    },
+  ];
 
   const handleAddTask = () => {
     if (!project?.id) return;
@@ -274,6 +335,10 @@ export default function ProjectDetailsPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
+        <div className="h-56 overflow-hidden rounded-xl border bg-muted">
+          <SmartImage sources={imageCandidates(undefined, projectPhoto(project.id || project.titre))} alt={project.titre} />
+        </div>
+
         {/* Header */}
         <div className="flex items-start justify-between flex-wrap gap-4">
           <div>
@@ -289,13 +354,34 @@ export default function ProjectDetailsPage() {
               <span className="text-sm text-muted-foreground">
                 {project.categorie}
               </span>
+              <span className="text-xs px-2 py-1 rounded-md bg-muted text-muted-foreground">
+                {project.visibilite === "PRIVE" ? "Prive" : "Public"}
+              </span>
             </div>
           </div>
-          <Button variant="outline">Modifier</Button>
+          <div className="flex items-center gap-2">
+            {canRequestToJoin && (
+              <Button
+                className="gap-2"
+                onClick={() => joinRequestMutation.mutate()}
+                disabled={joinRequestMutation.isPending}
+              >
+                <UserPlus className="h-4 w-4" />
+                {joinRequestMutation.isPending ? "Envoi..." : "Demander a rejoindre"}
+              </Button>
+            )}
+            {userRole === "student" && !isProjectMember && project.visibilite === "PUBLIC" && joinRequestSent && (
+              <Button variant="outline" className="gap-2" disabled>
+                <UserPlus className="h-4 w-4" />
+                Demande envoyee
+              </Button>
+            )}
+            {canManageProject && <Button variant="outline">Modifier</Button>}
+          </div>
         </div>
 
         {/* Deadline Alert */}
-        {(isLate || (daysLeft <= 7 && daysLeft > 0)) && (
+        {(isLate || (daysLeft !== null && daysLeft <= 7 && daysLeft > 0)) && (
           <div
             className={`p-4 rounded-xl flex items-center gap-3 ${isLate ? "bg-destructive/10 border border-destructive/20" : "bg-warning/10 border border-warning/20"}`}
           >
@@ -379,11 +465,13 @@ export default function ProjectDetailsPage() {
               <div className="p-4 border-b flex items-center justify-between">
                 <h3 className="font-medium">Tâches</h3>
                 <Dialog open={addOpen} onOpenChange={setAddOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" className="gap-1">
-                      <Plus className="h-3.5 w-3.5" /> Ajouter une tâche
-                    </Button>
-                  </DialogTrigger>
+                  {canContribute && (
+                    <DialogTrigger asChild>
+                      <Button size="sm" className="gap-1">
+                        <Plus className="h-3.5 w-3.5" /> Ajouter une tâche
+                      </Button>
+                    </DialogTrigger>
+                  )}
                   <DialogContent>
                     <DialogHeader>
                       <DialogTitle>Ajouter une tâche</DialogTitle>
@@ -479,9 +567,11 @@ export default function ProjectDetailsPage() {
                     <th className="text-left px-5 py-3 text-xs font-medium text-muted-foreground">
                       Statut
                     </th>
-                    <th className="text-right px-5 py-3 text-xs font-medium text-muted-foreground">
-                      Actions
-                    </th>
+                    {canContribute && (
+                      <th className="text-right px-5 py-3 text-xs font-medium text-muted-foreground">
+                        Actions
+                      </th>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
@@ -516,6 +606,7 @@ export default function ProjectDetailsPage() {
                       <td className="px-5 py-3">
                         <StatusBadge status={t.statut} />
                       </td>
+                      {canContribute && (
                       <td className="px-5 py-3 text-right">
                         <Dialog
                           open={assignOpen && assignTaskId === t.id}
@@ -572,6 +663,7 @@ export default function ProjectDetailsPage() {
                           </DialogContent>
                         </Dialog>
                       </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -584,11 +676,13 @@ export default function ProjectDetailsPage() {
               <div className="p-4 border-b flex items-center justify-between">
                 <h3 className="font-medium">Membres</h3>
                 <Dialog open={memberOpen} onOpenChange={setMemberOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" className="gap-1">
-                      <Plus className="h-3.5 w-3.5" /> Ajouter un membre
-                    </Button>
-                  </DialogTrigger>
+                  {canManageProject && (
+                    <DialogTrigger asChild>
+                      <Button size="sm" className="gap-1">
+                        <Plus className="h-3.5 w-3.5" /> Ajouter un membre
+                      </Button>
+                    </DialogTrigger>
+                  )}
                   <DialogContent>
                     <DialogHeader>
                       <DialogTitle>Ajouter un membre</DialogTitle>
@@ -628,7 +722,11 @@ export default function ProjectDetailsPage() {
                   >
                     <div className="flex items-center gap-3">
                       <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
-                        <User className="h-4 w-4 text-primary" />
+                        <SmartImage
+                          sources={imageCandidates(m.avatar, avatarPhoto(m.email))}
+                          alt={m.nom || m.email}
+                          className="rounded-full"
+                        />
                       </div>
                       <div>
                         <p className="text-sm font-medium">{m.nom}</p>
@@ -661,7 +759,7 @@ export default function ProjectDetailsPage() {
           <TabsContent value="historique" className="mt-4">
             <div className="bg-card rounded-xl border p-5">
               <div className="space-y-4">
-                {[
+                {historyItems.concat([
                   { date: "2025-03-15", action: 'Statut changé à "En cours"' },
                   {
                     date: "2025-03-10",
@@ -672,7 +770,7 @@ export default function ProjectDetailsPage() {
                     action: "Membre Ines ajoutée comme Observateur",
                   },
                   { date: "2025-02-28", action: "Projet créé" },
-                ].map((h, i) => (
+                ]).map((h, i) => (
                   <div key={i} className="flex items-start gap-3">
                     <div className="mt-0.5 h-2 w-2 rounded-full bg-primary shrink-0" />
                     <div>
