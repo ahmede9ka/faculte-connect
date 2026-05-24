@@ -31,6 +31,32 @@ services:
       - discovery
     restart: unless-stopped
 
+  event-service:
+    build:
+      context: ./backend/services/event-service
+    environment:
+      - EUREKA_URL=http://discovery:8761/eureka/
+      - MONGODB_HOST=mongodb
+      - MONGODB_PORT=27017
+    depends_on:
+      - mongodb
+      - discovery
+    restart: unless-stopped
+
+  recommendation-service:
+    build:
+      context: ./backend/services/recommendation-service
+    environment:
+      - EUREKA_URL=http://discovery:8761/eureka/
+      - MONGODB_URI=mongodb://maher:maher@mongodb:27017/recommendation_db?authSource=admin
+    depends_on:
+      - mongodb
+      - discovery
+      - auth-service
+      - project-service
+      - event-service
+    restart: unless-stopped
+
   backend:
     # Spring API gateway (exposed to the frontend container)
     build:
@@ -41,6 +67,8 @@ services:
       - discovery
       - auth-service
       - project-service
+      - event-service
+      - recommendation-service
     restart: unless-stopped
 
   mongodb:

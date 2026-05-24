@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 import tn.fst.authservice.service.ListService;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/lists")
@@ -28,5 +29,10 @@ public class ListController {
     public ResponseEntity<List<String>> getFacultes() {
         List<String> facultes = listService.getFacultes();
         return ResponseEntity.ok(facultes);
+    }
+
+    @GetMapping("/specialites")
+    public ResponseEntity<Map<String, List<String>>> getSpecialites() {
+        return ResponseEntity.ok(listService.getSpecialites());
     }
 }

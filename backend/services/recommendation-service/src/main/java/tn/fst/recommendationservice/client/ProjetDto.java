@@ -22,5 +22,7 @@ public class ProjetDto {
     private LocalDate deadline;
     private boolean validite;
     private String status;
+    private String approbation;
+    private int progression;
     private List<String> membres;
 }

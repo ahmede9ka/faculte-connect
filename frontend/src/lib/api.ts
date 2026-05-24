@@ -1082,18 +1082,152 @@ export const deleteRecommendation = async (id: string): Promise<void> => {
 
 // ==================== LIST ENDPOINTS ====================
 
+const LOCAL_COMPETENCES = [
+  "Java",
+  "Python",
+  "JavaScript",
+  "TypeScript",
+  "React",
+  "Angular",
+  "Vue.js",
+  "Spring Boot",
+  "Node.js",
+  "Django",
+  "Machine Learning",
+  "Data Science",
+  "Data Analysis",
+  "DevOps",
+  "Cloud Computing",
+  "AWS",
+  "Azure",
+  "Docker",
+  "Kubernetes",
+  "CI/CD",
+  "MySQL",
+  "PostgreSQL",
+  "MongoDB",
+  "Redis",
+  "Microservices",
+  "REST API",
+  "GraphQL",
+  "Git",
+  "Agile",
+  "Scrum",
+  "UI/UX Design",
+  "Mobile Development",
+  "Android",
+  "iOS",
+  "Flutter",
+  "React Native",
+  "Cybersecurity",
+  "Blockchain",
+  "IoT",
+  "AI/ML",
+  "Big Data",
+] as const;
+
+const LOCAL_FACULTES = [
+  "Faculté des Sciences de Tunis",
+  "Faculté des Sciences Économiques et de Gestion de Tunis",
+  "Faculté de Médecine de Tunis",
+  "Faculté de Droit et des Sciences Politiques de Tunis",
+  "École Nationale d'Ingénieurs de Tunis",
+  "Institut Supérieur de Gestion de Tunis",
+  "École Supérieure des Sciences et Techniques de Tunis",
+  "Institut Préparatoire aux Études d'Ingénieurs",
+  "Faculté des Lettres et des Sciences Humaines de Tunis",
+  "École Nationale des Sciences de l'Informatique",
+  "Institut Supérieur d'Informatique",
+  "Faculté des Sciences Juridiques, Politiques et Sociales de Tunis",
+] as const;
+
+const LOCAL_SPECIALITES: Record<string, string[]> = {
+  "Faculté des Sciences de Tunis": [
+    "Informatique",
+    "Mathématiques",
+    "Physique",
+    "Chimie",
+    "Biologie",
+    "Géologie",
+  ],
+  "Faculté des Sciences Économiques et de Gestion de Tunis": [
+    "Gestion",
+    "Finance",
+    "Comptabilité",
+    "Marketing",
+    "Économie",
+  ],
+  "Faculté de Médecine de Tunis": [
+    "Médecine générale",
+    "Pharmacie",
+    "Sciences infirmières",
+  ],
+  "Faculté de Droit et des Sciences Politiques de Tunis": [
+    "Droit privé",
+    "Droit public",
+    "Sciences politiques",
+  ],
+  "École Nationale d'Ingénieurs de Tunis": [
+    "Génie informatique",
+    "Génie civil",
+    "Génie électrique",
+    "Génie industriel",
+    "Génie mécanique",
+  ],
+  "Institut Supérieur de Gestion de Tunis": [
+    "Management",
+    "Business Intelligence",
+    "Finance",
+    "Marketing digital",
+  ],
+  "École Supérieure des Sciences et Techniques de Tunis": [
+    "Technologies de l'information",
+    "Télécommunications",
+    "Électronique",
+    "Automatique",
+  ],
+  "Institut Préparatoire aux Études d'Ingénieurs": [
+    "Mathématiques-Physique",
+    "Physique-Chimie",
+    "Technologie",
+  ],
+  "Faculté des Lettres et des Sciences Humaines de Tunis": [
+    "Langues",
+    "Littérature",
+    "Histoire",
+    "Philosophie",
+    "Sociologie",
+  ],
+  "École Nationale des Sciences de l'Informatique": [
+    "Génie logiciel",
+    "Intelligence artificielle",
+    "Réseaux et sécurité",
+    "Systèmes d'information",
+    "Data Science",
+  ],
+  "Institut Supérieur d'Informatique": [
+    "Développement logiciel",
+    "Systèmes embarqués",
+    "Réseaux informatiques",
+    "Multimédia",
+  ],
+  "Faculté des Sciences Juridiques, Politiques et Sociales de Tunis": [
+    "Droit",
+    "Relations internationales",
+    "Sciences sociales",
+  ],
+};
+
 export const fetchCompetences = async (): Promise<string[]> => {
-  try {
-    return await apiJson<string[]>(`/lists/competences`);
-  } catch {
-    return [];
-  }
+  return [...LOCAL_COMPETENCES];
 };
 
 export const fetchFacultes = async (): Promise<string[]> => {
-  try {
-    return await apiJson<string[]>(`/lists/facultes`);
-  } catch {
-    return [];
-  }
+  return [...LOCAL_FACULTES];
+};
+
+export const fetchSpecialites = async (): Promise<Record<string, string[]>> => {
+  return Object.fromEntries(
+    Object.entries(LOCAL_SPECIALITES).map(([faculte, specialites]) => [faculte, [...specialites]])
+  );
 };

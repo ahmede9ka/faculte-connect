@@ -35,6 +35,7 @@ public class SecurityConfig {
                     .authorizeHttpRequests(auth -> auth
                             .requestMatchers(HttpMethod.DELETE, "/auth/users/**").hasRole("ADMIN")
                             .requestMatchers("/auth/**").permitAll()
+                            .requestMatchers("/lists/**").permitAll()
                             .requestMatchers("/admin/**").hasRole("ADMIN")
                             .anyRequest().authenticated()
                     )

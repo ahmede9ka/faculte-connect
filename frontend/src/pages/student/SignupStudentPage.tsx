@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,14 +8,13 @@ import { Badge } from '@/components/ui/badge';
 import { GraduationCap, X } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { useQuery } from '@tanstack/react-query';
-import { fetchCompetences, fetchFacultes } from '@/lib/api';
+import { fetchCompetences, fetchFacultes, fetchSpecialites } from '@/lib/api';
 
 export default function SignupStudentPage() {
   const [competences, setCompetences] = useState<string[]>([]);
   const { signUpStudent } = useAuth();
   const navigate = useNavigate();
 
-  // All fields for registration
   const [nom, setNom] = useState("");
   const [prenom, setPrenom] = useState("");
   const [email, setEmail] = useState("");
@@ -24,13 +23,34 @@ export default function SignupStudentPage() {
   const [specialite, setSpecialite] = useState("");
   const [idUniversitaire, setIdUniversitaire] = useState("");
 
-  const { data: competencesList = [] } = useQuery<string[]>({ queryKey: ['competences'], queryFn: fetchCompetences });
-  const { data: facultesList = [] } = useQuery<string[]>({ queryKey: ['facultes'], queryFn: fetchFacultes });
+  const { data: competencesList = [] } = useQuery<string[]>({
+    queryKey: ['competences'],
+    queryFn: fetchCompetences,
+  });
+  const { data: facultesList = [] } = useQuery<string[]>({
+    queryKey: ['facultes'],
+    queryFn: fetchFacultes,
+  });
+  const { data: specialitesByFaculte = {} } = useQuery<Record<string, string[]>>({
+    queryKey: ['specialites'],
+    queryFn: fetchSpecialites,
+  });
+
+  const specialitesList = useMemo(
+    () => (faculte ? specialitesByFaculte[faculte] ?? [] : []),
+    [faculte, specialitesByFaculte]
+  );
 
   const addCompetence = (c: string) => {
     if (!competences.includes(c)) setCompetences([...competences, c]);
   };
+
   const removeCompetence = (c: string) => setCompetences(competences.filter(x => x !== c));
+
+  const handleFaculteChange = (value: string) => {
+    setFaculte(value);
+    setSpecialite("");
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,7 +59,7 @@ export default function SignupStudentPage() {
       password,
       name: `${prenom} ${nom}`.trim(),
       faculte,
-      specialite: faculte, // Using faculte as specialite for now
+      specialite,
       idUniversitaire,
       competences,
     });
@@ -56,7 +76,7 @@ export default function SignupStudentPage() {
           <span className="font-display font-bold">FST Projects</span>
         </Link>
         <div>
-          <h1 className="font-display text-2xl font-bold">Inscription Étudiant</h1>
+          <h1 className="font-display text-2xl font-bold">Inscription étudiant</h1>
           <p className="text-muted-foreground mt-1">Créez votre compte étudiant</p>
         </div>
 
@@ -64,11 +84,11 @@ export default function SignupStudentPage() {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Nom</Label>
-              <Input placeholder="Ben Ali" value={nom} onChange={(e) => setNom(e.target.value)} />
+              <Input placeholder="Ben Ali" value={nom} onChange={(e) => setNom(e.target.value)} required />
             </div>
             <div className="space-y-2">
               <Label>Prénom</Label>
-              <Input placeholder="Ahmed" value={prenom} onChange={(e) => setPrenom(e.target.value)} />
+              <Input placeholder="Ahmed" value={prenom} onChange={(e) => setPrenom(e.target.value)} required />
             </div>
           </div>
           <div className="space-y-2">
@@ -78,6 +98,7 @@ export default function SignupStudentPage() {
               placeholder="ahmed.benali@fst.utm.tn"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              required
             />
           </div>
           <div className="space-y-2">
@@ -87,16 +108,28 @@ export default function SignupStudentPage() {
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              required
             />
           </div>
-          <div className="space-y-2">
-            <Label>Faculté / Spécialité</Label>
-            <Select value={faculte} onValueChange={setFaculte}>
-              <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
-              <SelectContent>
-                {facultesList.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Faculté</Label>
+              <Select value={faculte} onValueChange={handleFaculteChange} required>
+                <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
+                <SelectContent>
+                  {facultesList.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Spécialité</Label>
+              <Select value={specialite} onValueChange={setSpecialite} disabled={!faculte || specialitesList.length === 0}>
+                <SelectTrigger><SelectValue placeholder={faculte ? "Choisir..." : "Choisir une faculté"} /></SelectTrigger>
+                <SelectContent>
+                  {specialitesList.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <div className="space-y-2">
             <Label>Compétences</Label>
@@ -119,7 +152,7 @@ export default function SignupStudentPage() {
             )}
           </div>
           <div className="space-y-2">
-            <Label>ID universitaire (Bérasmi)</Label>
+            <Label>ID universitaire</Label>
             <Input placeholder="FST2024001" value={idUniversitaire} onChange={(e) => setIdUniversitaire(e.target.value)} />
           </div>
           <div className="space-y-2">
@@ -131,7 +164,7 @@ export default function SignupStudentPage() {
         <p className="text-center text-sm text-muted-foreground">
           Déjà un compte ? <Link to="/login" className="text-primary hover:underline">Se connecter</Link>
           {' · '}
-          <Link to="/signup/organization" className="text-primary hover:underline">Inscription Organisation</Link>
+          <Link to="/signup/organization" className="text-primary hover:underline">Inscription organisation</Link>
         </p>
       </div>
     </div>
