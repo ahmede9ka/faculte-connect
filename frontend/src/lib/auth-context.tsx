@@ -1,5 +1,11 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+} from "react";
 import { UserRole } from "./types";
 import { fetchUserByEmail, login as loginRequest, registerUser } from "./api";
 
@@ -35,7 +41,11 @@ interface SignUpOrganizationPayload {
 }
 
 interface AuthContextType extends AuthState {
-  signIn: (email: string, password: string, expectedRole?: UserRole) => Promise<UserRole>;
+  signIn: (
+    email: string,
+    password: string,
+    expectedRole?: UserRole,
+  ) => Promise<UserRole>;
   signUpStudent: (payload: SignUpStudentPayload) => Promise<void>;
   signUpOrganization: (payload: SignUpOrganizationPayload) => Promise<void>;
   logout: () => void;
@@ -50,6 +60,31 @@ const storageKeys = {
   role: "auth_role",
 } as const;
 
+function getInitialAuthState(): AuthState {
+  const token = localStorage.getItem(storageKeys.token);
+  const userEmail = localStorage.getItem(storageKeys.email) || "";
+  const userName = localStorage.getItem(storageKeys.name) || "";
+  const role = localStorage.getItem(storageKeys.role) as UserRole | null;
+
+  if (!token) {
+    return {
+      isAuthenticated: false,
+      userRole: "student",
+      userName: "",
+      userEmail: "",
+      token: null,
+    };
+  }
+
+  return {
+    isAuthenticated: true,
+    token,
+    userEmail,
+    userName,
+    userRole: role || "student",
+  };
+}
+
 function roleFromServer(role?: string): UserRole {
   const r = (role || "").toUpperCase();
   if (r === "ADMIN") return "admin";
@@ -58,7 +93,9 @@ function roleFromServer(role?: string): UserRole {
   return "student";
 }
 
-function setStoredAuth(next: Pick<AuthState, "token" | "userEmail" | "userName" | "userRole">) {
+function setStoredAuth(
+  next: Pick<AuthState, "token" | "userEmail" | "userName" | "userRole">,
+) {
   if (next.token) localStorage.setItem(storageKeys.token, next.token);
   localStorage.setItem(storageKeys.email, next.userEmail);
   localStorage.setItem(storageKeys.name, next.userName);
@@ -73,31 +110,7 @@ function clearStoredAuth() {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [auth, setAuth] = useState<AuthState>({
-    isAuthenticated: false,
-    userRole: "student",
-    userName: "",
-    userEmail: "",
-    token: null,
-  });
-
-  // Load auth state from localStorage once.
-  useEffect(() => {
-    const token = localStorage.getItem(storageKeys.token);
-    const userEmail = localStorage.getItem(storageKeys.email) || "";
-    const userName = localStorage.getItem(storageKeys.name) || "";
-    const role = localStorage.getItem(storageKeys.role) as UserRole | null;
-
-    if (token) {
-      setAuth({
-        isAuthenticated: true,
-        token,
-        userEmail,
-        userName,
-        userRole: role || "student",
-      });
-    }
-  }, []);
+  const [auth, setAuth] = useState<AuthState>(getInitialAuthState);
 
   useEffect(() => {
     if (!auth.isAuthenticated || !auth.userEmail) return;
@@ -107,9 +120,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     (async () => {
       try {
         const userJson = await fetchUserByEmail(auth.userEmail);
-        const resolvedEmail = typeof userJson.email === "string" ? userJson.email : auth.userEmail;
-        const resolvedName = typeof userJson.name === "string" ? userJson.name : resolvedEmail;
-        const resolvedRole = typeof userJson.role === "string" ? userJson.role : "";
+        const resolvedEmail =
+          typeof userJson.email === "string" ? userJson.email : auth.userEmail;
+        const resolvedName =
+          typeof userJson.name === "string" ? userJson.name : resolvedEmail;
+        const resolvedRole =
+          typeof userJson.role === "string" ? userJson.role : "";
         const mappedRole = roleFromServer(resolvedRole);
 
         if (cancelled) return;
@@ -137,7 +153,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [auth.isAuthenticated, auth.userEmail, auth.token]);
 
-  const signIn = async (email: string, password: string, expectedRole?: UserRole) => {
+  const signIn = async (
+    email: string,
+    password: string,
+    expectedRole?: UserRole,
+  ) => {
     const loginJson = await loginRequest(email, password);
 
     // Store minimal auth first so refreshes work even if the profile call fails.
@@ -159,8 +179,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Fetch user details (role/name) from backend.
     const userJson = await fetchUserByEmail(email);
 
-    const resolvedEmail = typeof userJson.email === "string" ? userJson.email : email;
-    const resolvedName = typeof userJson.name === "string" ? userJson.name : resolvedEmail;
+    const resolvedEmail =
+      typeof userJson.email === "string" ? userJson.email : email;
+    const resolvedName =
+      typeof userJson.name === "string" ? userJson.name : resolvedEmail;
     const resolvedRole = typeof userJson.role === "string" ? userJson.role : "";
     const mappedRole = roleFromServer(resolvedRole);
 

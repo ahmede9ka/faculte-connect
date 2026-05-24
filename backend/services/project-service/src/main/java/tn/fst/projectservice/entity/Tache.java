@@ -19,6 +19,7 @@ public class Tache {
     private StatusProjet status;
     private LocalDate echeance;
     private int progression; // 0-100%
+    private String priorite;
     private String commentaire;
     private List<String> membresEmails; // multiple assigned members
 }

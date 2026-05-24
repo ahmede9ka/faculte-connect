@@ -259,6 +259,7 @@ public class ProjetService {
                 .status(request.getStatus() != null ? request.getStatus() : StatusProjet.EN_ATTENTE)
                 .echeance(request.getEcheance())
                 .progression(request.getProgression())
+            .priorite(request.getPriorite())
                 .commentaire(request.getCommentaire() != null ? request.getCommentaire() : "")
                 .membresEmails(validatedMembers)
                 .build();
@@ -293,6 +294,9 @@ public class ProjetService {
         tache.setStatus(request.getStatus());
         tache.setEcheance(request.getEcheance());
         tache.setProgression(request.getProgression());
+        if (request.getPriorite() != null) {
+            tache.setPriorite(request.getPriorite());
+        }
         if (request.getCommentaire() != null) {
             tache.setCommentaire(request.getCommentaire());
         }
@@ -304,8 +308,12 @@ public class ProjetService {
                 .orElse(0);
         projet.setProgression(avgProgression);
 
-        if (avgProgression == 100) {
+        if (avgProgression >= 100) {
             projet.setStatus(StatusProjet.TERMINE);
+        } else if (avgProgression > 0) {
+            projet.setStatus(StatusProjet.EN_COURS);
+        } else {
+            projet.setStatus(StatusProjet.EN_ATTENTE);
         }
 
         Projet saved = projetRepository.save(projet);

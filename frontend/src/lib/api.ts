@@ -33,6 +33,7 @@ type TacheRaw = {
   status?: unknown;
   progression?: unknown;
   commentaire?: unknown;
+  priorite?: unknown;
   // FIX: backend Tache has membresEmails (List<String>), not a single assignee
   membresEmails?: unknown;
 };
@@ -163,6 +164,19 @@ function mapTaskStatus(status: string | undefined): Task["statut"] {
   }
 }
 
+function mapTaskPriority(priority: string | undefined): Task["priorite"] {
+  const p = (priority || "").toUpperCase();
+  if (p === "HIGH") return "High";
+  if (p === "MEDIUM") return "Medium";
+  if (p === "LOW") return "Low";
+  if (p === "HIGH" || p === "H") return "High";
+  if (p === "MEDIUM" || p === "M") return "Medium";
+  if (p === "LOW" || p === "L") return "Low";
+  // fallback to title case inputs
+  if (priority === "High" || priority === "Medium" || priority === "Low") return priority;
+  return "Low";
+}
+
 function mapProject(p: ProjetRaw): Project {
   const emails: string[] = Array.isArray(p.membres)
     ? (p.membres as unknown[]).map(asString)
@@ -221,8 +235,7 @@ function mapTask(t: TacheRaw, projectId: string): Task {
     // Backend Tache entity has no dateDebut field
     dateDebut: "",
     deadline: t.echeance ? asString(t.echeance) : "",
-    // Backend TacheRequest has no priorite field; default to Low
-    priorite: "Low",
+    priorite: mapTaskPriority(asString(t.priorite)),
     statut: mapTaskStatus(asString(t.status)),
     progression: asNumber(t.progression),
     commentaire: asString(t.commentaire),
@@ -491,6 +504,7 @@ export const addTask = async (
     titre: string;
     description: string;
     echeance?: string;
+    priorite?: Task["priorite"];
     membresEmails: string[];
   }
 ): Promise<Project> => {
@@ -502,6 +516,7 @@ export const addTask = async (
     status: "EN_ATTENTE",
     echeance: taskData.echeance ?? null,
     progression: 0,
+    priorite: taskData.priorite ?? "Low",
     membresEmails: taskData.membresEmails,
   };
 
@@ -543,6 +558,7 @@ export const updateTask = async (
     echeance?: string;
     progression?: number;
     commentaire?: string;
+    priorite?: Task["priorite"];
     membresEmails?: string[];
     updatedByEmail?: string;
   }
@@ -554,6 +570,7 @@ export const updateTask = async (
     echeance: taskData.echeance ?? null,
     progression: taskData.progression ?? 0,
     commentaire: taskData.commentaire ?? "",
+    priorite: taskData.priorite,
     membresEmails: taskData.membresEmails ?? [],
     updatedByEmail: taskData.updatedByEmail ?? "",
   };
@@ -766,6 +783,14 @@ function mapNotification(n: NotificationRaw): Notification {
   };
 }
 
+function sortNotificationsDesc(notifications: Notification[]): Notification[] {
+  return [...notifications].sort((left, right) => {
+    const leftTime = new Date(left.date).getTime();
+    const rightTime = new Date(right.date).getTime();
+    return rightTime - leftTime;
+  });
+}
+
 export const fetchNotifications = async (emailOverride?: string): Promise<Notification[]> => {
   const email = emailOverride || getAuthEmail();
   if (!email) return [];
@@ -774,7 +799,7 @@ export const fetchNotifications = async (emailOverride?: string): Promise<Notifi
     const notificationsRaw = await apiJson<NotificationRaw[]>(
       `/notifications/user/${encodeURIComponent(email)}`
     );
-    return notificationsRaw.map(mapNotification);
+    return sortNotificationsDesc(notificationsRaw.map(mapNotification));
   } catch {
     return [];
   }
@@ -790,7 +815,7 @@ export const fetchNotificationsForUsers = async (userIds: string[]): Promise<Not
     merged.set(notification.id, notification);
   });
 
-  return Array.from(merged.values());
+  return sortNotificationsDesc(Array.from(merged.values()));
 };
 
 export const fetchUnreadNotifications = async (emailOverride?: string): Promise<Notification[]> => {
@@ -801,7 +826,7 @@ export const fetchUnreadNotifications = async (emailOverride?: string): Promise<
     const notificationsRaw = await apiJson<NotificationRaw[]>(
       `/notifications/user/${encodeURIComponent(email)}/unread`
     );
-    return notificationsRaw.map(mapNotification);
+    return sortNotificationsDesc(notificationsRaw.map(mapNotification));
   } catch {
     return [];
   }
@@ -875,6 +900,8 @@ type RecommendationRaw = {
   id?: unknown;
   userId?: unknown;
   projetId?: unknown;
+  eventId?: unknown;
+  recommendationType?: unknown;
   titre?: unknown;
   categorie?: unknown;
   competenceMatch?: unknown;
@@ -883,9 +910,14 @@ type RecommendationRaw = {
 };
 
 function mapRecommendation(r: RecommendationRaw): Recommendation {
+  const recommendationType = asString(r.recommendationType);
+  const eventId = asString(r.eventId);
+
   return {
     id: asString(r.id),
     projetId: asString(r.projetId),
+    eventId,
+    recommendationType: (recommendationType || (eventId ? "EVENT" : "PROJECT")) as Recommendation["recommendationType"],
     titre: asString(r.titre),
     categorie: asString(r.categorie),
     competenceMatch: asNumber(r.competenceMatch),
@@ -913,15 +945,11 @@ export const refreshRecommendations = async (): Promise<Recommendation[]> => {
   const email = getAuthEmail();
   if (!email) return [];
 
-  try {
-    const recommendationsRaw = await apiJson<RecommendationRaw[]>(
-      `/recommendations/user/${encodeURIComponent(email)}/refresh`,
-      { method: "POST" }
-    );
-    return recommendationsRaw.map(mapRecommendation);
-  } catch {
-    return [];
-  }
+  const recommendationsRaw = await apiJson<RecommendationRaw[]>(
+    `/recommendations/user/${encodeURIComponent(email)}/refresh`,
+    { method: "POST" }
+  );
+  return recommendationsRaw.map(mapRecommendation);
 };
 
 // FIX: DELETE /recommendations/{id} returns 204 — safe with updated apiJson.

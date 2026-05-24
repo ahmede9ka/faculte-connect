@@ -11,6 +11,7 @@ import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.kafka.support.serializer.JacksonJsonDeserializer; // ✅ new import
+import tn.fst.notificationservice.dto.EventParticipationEvent;
 import tn.fst.notificationservice.dto.TacheAssigneeEvent;
 import tn.fst.notificationservice.dto.TacheUpdateEvent;
 
@@ -80,6 +81,31 @@ public class KafkaConsumerConfig {
     public ConcurrentKafkaListenerContainerFactory<String, TacheUpdateEvent> tacheUpdateKafkaListenerContainerFactory() {
         ConcurrentKafkaListenerContainerFactory<String, TacheUpdateEvent> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(tacheUpdateConsumerFactory());
+        return factory;
+    }
+
+    @Bean
+    public ConsumerFactory<String, EventParticipationEvent> eventParticipationConsumerFactory() {
+        JacksonJsonDeserializer<EventParticipationEvent> jsonDeserializer = new JacksonJsonDeserializer<>(
+                EventParticipationEvent.class);
+        jsonDeserializer.trustedPackages("*");
+        jsonDeserializer.setUseTypeHeaders(false);
+
+        Map<String, Object> props = new HashMap<>();
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+
+        return new DefaultKafkaConsumerFactory<>(
+                props,
+                new StringDeserializer(),
+                new ErrorHandlingDeserializer<>(jsonDeserializer));
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, EventParticipationEvent> eventParticipationKafkaListenerContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, EventParticipationEvent> factory = new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(eventParticipationConsumerFactory());
         return factory;
     }
 }

@@ -99,6 +99,8 @@ export interface Notification {
 export interface Recommendation {
   id: string;
   projetId: string;
+  eventId?: string;
+  recommendationType: 'PROJECT' | 'EVENT';
   titre: string;
   categorie: string;
   competenceMatch: number;
