@@ -116,15 +116,33 @@ public class ProjetService {
     // ✅ Full update
     public Projet update(String id, ProjetRequest request) {
         Projet projet = getById(id);
-        projet.setTitre(request.getTitre());
-        projet.setDesc(request.getDesc());
-        projet.setDeadline(request.getDeadline());
-        projet.setStatus(request.getStatus());
-        projet.setMembres(request.getMembres());
-        projet.setTaches(request.getTaches());
-        projet.setObjectifs(request.getObjectifs());
-        projet.setRessources(request.getRessources());
-        projet.setAffectations(request.getAffectations());
+        if (request.getTitre() != null) {
+            projet.setTitre(request.getTitre());
+        }
+        if (request.getDesc() != null) {
+            projet.setDesc(request.getDesc());
+        }
+        if (request.getDeadline() != null) {
+            projet.setDeadline(request.getDeadline());
+        }
+        if (request.getStatus() != null) {
+            projet.setStatus(request.getStatus());
+        }
+        if (request.getMembres() != null) {
+            projet.setMembres(request.getMembres());
+        }
+        if (request.getTaches() != null) {
+            projet.setTaches(request.getTaches());
+        }
+        if (request.getObjectifs() != null) {
+            projet.setObjectifs(request.getObjectifs());
+        }
+        if (request.getRessources() != null) {
+            projet.setRessources(request.getRessources());
+        }
+        if (request.getAffectations() != null) {
+            projet.setAffectations(request.getAffectations());
+        }
         return projetRepository.save(projet);
     }
 

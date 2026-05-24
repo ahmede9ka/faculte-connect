@@ -36,6 +36,12 @@ export default function EditProfilePage() {
   const [idUniversitaire, setIdUniversitaire] = useState('');
   const [competences, setCompetences] = useState<string[]>([]);
   const [avatar, setAvatar] = useState('');
+  const [organizationType, setOrganizationType] = useState('');
+  const [responsableNom, setResponsableNom] = useState('');
+  const [responsableEmail, setResponsableEmail] = useState('');
+  const [responsableTelephone, setResponsableTelephone] = useState('');
+  const [sponsorsText, setSponsorsText] = useState('');
+  const [logo, setLogo] = useState('');
 
   useEffect(() => {
     if (currentUser) {
@@ -45,6 +51,12 @@ export default function EditProfilePage() {
       setIdUniversitaire(currentUser.idUniversitaire || '');
       setCompetences(currentUser.competences || []);
       setAvatar(currentUser.avatar || '');
+      setOrganizationType(currentUser.organizationType || '');
+      setResponsableNom(currentUser.responsableNom || '');
+      setResponsableEmail(currentUser.responsableEmail || '');
+      setResponsableTelephone(currentUser.responsableTelephone || '');
+      setSponsorsText((currentUser.sponsors || []).join(', '));
+      setLogo(currentUser.logo || '');
     }
   }, [currentUser]);
 
@@ -69,6 +81,12 @@ export default function EditProfilePage() {
       idUniversitaire,
       competences,
       avatar,
+      organizationType,
+      responsableNom,
+      responsableEmail,
+      responsableTelephone,
+      sponsors: sponsorsText.split(',').map(s => s.trim()).filter(Boolean),
+      logo,
     });
   };
 
@@ -179,8 +197,60 @@ export default function EditProfilePage() {
             </>
           )}
 
+          {currentUser.role === 'organization' && (
+            <>
+              <div className="space-y-2">
+                <Label>Type d'organisation</Label>
+                <Select value={organizationType} onValueChange={setOrganizationType}>
+                  <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Club">Club</SelectItem>
+                    <SelectItem value="Association">Association</SelectItem>
+                    <SelectItem value="Département">Département</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Responsable</Label>
+                  <Input value={responsableNom} onChange={(e) => setResponsableNom(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Email responsable</Label>
+                  <Input type="email" value={responsableEmail} onChange={(e) => setResponsableEmail(e.target.value)} />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Téléphone responsable</Label>
+                <Input value={responsableTelephone} onChange={(e) => setResponsableTelephone(e.target.value)} />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Sponsors</Label>
+                <Input
+                  value={sponsorsText}
+                  onChange={(e) => setSponsorsText(e.target.value)}
+                  placeholder="Microsoft, Google, AWS"
+                />
+                <p className="text-xs text-muted-foreground">Séparez les sponsors par des virgules.</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Logo (URL)</Label>
+                <Input
+                  type="url"
+                  placeholder="https://example.com/logo.png"
+                  value={logo}
+                  onChange={(e) => setLogo(e.target.value)}
+                />
+              </div>
+            </>
+          )}
+
           <div className="space-y-2">
-            <Label>Avatar (URL)</Label>
+            <Label>{currentUser.role === 'organization' ? 'Image de profil (URL)' : 'Avatar (URL)'}</Label>
             <Input
               type="url"
               placeholder="https://example.com/avatar.jpg"

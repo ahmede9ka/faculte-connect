@@ -7,7 +7,7 @@ spring:
 
   data:
     mongodb:
-      uri: mongodb://${MONGODB_HOST:localhost}:${MONGODB_PORT:27021}/recommendation_db
+      uri: mongodb://${MONGODB_USERNAME:maher}:${MONGODB_PASSWORD:maher}@${MONGODB_HOST:localhost}:${MONGODB_PORT:27018}/recommendation_db?authSource=admin
 
 eureka:
   client:

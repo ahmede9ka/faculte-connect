@@ -11,6 +11,12 @@ export interface User {
   specialite?: string;
   competences?: string[];
   idUniversitaire?: string;
+  organizationType?: string;
+  responsableNom?: string;
+  responsableEmail?: string;
+  responsableTelephone?: string;
+  sponsors?: string[];
+  logo?: string;
 }
 
 export interface Organization {

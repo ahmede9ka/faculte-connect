@@ -20,6 +20,8 @@ export default function CreateProjectPage() {
   const [organisation, setOrganisation] = useState('');
   const [deadline, setDeadline] = useState('');
   const [chefProjet, setChefProjet] = useState('');
+  const [ressourceNom, setRessourceNom] = useState('');
+  const [ressourceLien, setRessourceLien] = useState('');
 
   useEffect(() => {
     if (userName && organisation !== userName) {
@@ -60,6 +62,9 @@ export default function CreateProjectPage() {
       organisation,
       deadline,
       validite: true,
+      ressources: ressourceNom.trim() || ressourceLien.trim()
+        ? [{ nom: ressourceNom.trim() || 'Ressource', valeur: ressourceLien.trim() }]
+        : [],
     });
   };
 
@@ -108,8 +113,19 @@ export default function CreateProjectPage() {
             <Input value={chefProjet} readOnly />
           </div>
           <div className="space-y-2">
-            <Label>Ressources (fichiers, liens)</Label>
-            <Input type="file" multiple />
+            <Label>Ressource</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Input
+                placeholder="Nom de la ressource"
+                value={ressourceNom}
+                onChange={(e) => setRessourceNom(e.target.value)}
+              />
+              <Input
+                placeholder="Lien ou référence"
+                value={ressourceLien}
+                onChange={(e) => setRessourceLien(e.target.value)}
+              />
+            </div>
           </div>
           <div className="flex gap-3 justify-end">
             <Button type="button" variant="outline" onClick={() => navigate('/projects')} disabled={createMutation.isPending}>

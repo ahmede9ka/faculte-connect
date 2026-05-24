@@ -59,7 +59,9 @@ public class RecommendationService {
                 int matchScore = 0;
 
                 // For simplicity, match based on project title/description containing competence keywords
-                String projectText = (project.getTitre() + " " + project.getDesc()).toLowerCase();
+                String projectText = ((project.getTitre() != null ? project.getTitre() : "") + " "
+                        + (project.getDesc() != null ? project.getDesc() : "") + " "
+                        + (project.getOrganisation() != null ? project.getOrganisation() : "")).toLowerCase();
 
                 for (String competence : userCompetences) {
                     if (projectText.contains(competence.toLowerCase())) {
@@ -77,7 +79,9 @@ public class RecommendationService {
                             .projetId(project.getId())
                             .recommendationType("PROJECT")
                             .titre(project.getTitre())
-                            .categorie(project.getCategorie())
+                            .categorie(project.getCategorie() != null && !project.getCategorie().isBlank()
+                                    ? project.getCategorie()
+                                    : project.getOrganisation())
                             .competenceMatch(matchScore)
                             .dateRecommendation(LocalDateTime.now())
                             .competencesMatched(matchedCompetences)

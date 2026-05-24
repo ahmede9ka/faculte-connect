@@ -11,7 +11,7 @@ import { toast } from "sonner";
 export default function RecommendationsPage() {
   const queryClient = useQueryClient();
 
-  const { data: recommendations = [], isLoading } = useQuery<Recommendation[]>({
+  const { data: recommendations = [], isLoading, isError } = useQuery<Recommendation[]>({
     queryKey: ["recommendations"],
     queryFn: fetchRecommendations,
   });
@@ -71,11 +71,12 @@ export default function RecommendationsPage() {
           <div className="text-center py-12">
             <Lightbulb className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-30" />
             <h3 className="font-semibold mb-2">
-              Aucune recommandation disponible
+              {isError ? "Service de recommandation indisponible" : "Aucune recommandation disponible"}
             </h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Complétez votre profil avec vos compétences pour recevoir des
-              recommandations personnalisées.
+              {isError
+                ? "Vérifiez que le service backend est démarré et connecté à MongoDB."
+                : "Complétez votre profil avec vos compétences pour recevoir des recommandations personnalisées."}
             </p>
             <Button variant="outline" onClick={() => refreshMutation.mutate()}>
               Générer des recommandations

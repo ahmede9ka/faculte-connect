@@ -1,21 +1,28 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { StatusBadge } from '@/components/StatusBadge';
 import { ProgressBar } from '@/components/ProgressBar';
-import { fetchProjectsByOrganisation } from '@/lib/api';
+import { deleteProject, fetchProjectsByOrganisation, updateProject } from '@/lib/api';
 import { Project } from '@/lib/types';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Search, Eye, Pencil, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function OrgProjectsPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [editForm, setEditForm] = useState({ titre: '', description: '', deadline: '' });
   const { userName } = useAuth();
+  const queryClient = useQueryClient();
 
   const { data: projects = [], isLoading } = useQuery<Project[]>({
     queryKey: ['projects', userName],
@@ -28,6 +35,49 @@ export default function OrgProjectsPage() {
     const matchStatus = statusFilter === 'all' || p.statut === statusFilter;
     return matchSearch && matchStatus;
   });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ project, form }: { project: Project; form: typeof editForm }) =>
+      updateProject(project.id, {
+        titre: form.titre,
+        desc: form.description,
+        deadline: form.deadline,
+        chefProjet: project.chefDeProjet,
+        organisation: project.categorie,
+        membres: project.membres.map((member) => member.email),
+        ressources: project.ressources.map((r) => ({ nom: r.nom, valeur: r.lien })),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      toast.success('Projet modifié');
+      setEditingProject(null);
+    },
+    onError: () => toast.error('Erreur lors de la modification du projet'),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteProject(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      toast.success('Projet supprimé');
+    },
+    onError: () => toast.error('Erreur lors de la suppression'),
+  });
+
+  const openEdit = (project: Project) => {
+    setEditingProject(project);
+    setEditForm({
+      titre: project.titre,
+      description: project.description,
+      deadline: project.dateFin,
+    });
+  };
+
+  const handleDelete = (project: Project) => {
+    if (confirm(`Supprimer le projet "${project.titre}" ?`)) {
+      deleteMutation.mutate(project.id);
+    }
+  };
 
   return (
     <DashboardLayout>
@@ -99,8 +149,18 @@ export default function OrgProjectsPage() {
                           <Link to={`/projects/${p.id}`}>
                             <Button variant="ghost" size="sm"><Eye className="h-4 w-4" /></Button>
                           </Link>
-                          <Button variant="ghost" size="sm"><Pencil className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="sm" className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="sm" onClick={() => openEdit(p)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive"
+                            onClick={() => handleDelete(p)}
+                            disabled={deleteMutation.isPending}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </td>
                     </tr>
@@ -110,6 +170,39 @@ export default function OrgProjectsPage() {
             </div>
           )}
         </div>
+
+        <Dialog open={Boolean(editingProject)} onOpenChange={(open) => !open && setEditingProject(null)}>
+          <DialogContent className="max-w-xl">
+            <DialogHeader>
+              <DialogTitle>Modifier le projet</DialogTitle>
+            </DialogHeader>
+            {editingProject && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Titre</Label>
+                  <Input value={editForm.titre} onChange={(e) => setEditForm({ ...editForm, titre: e.target.value })} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Description</Label>
+                  <Textarea value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Date de fin</Label>
+                  <Input type="date" value={editForm.deadline} onChange={(e) => setEditForm({ ...editForm, deadline: e.target.value })} />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setEditingProject(null)}>Annuler</Button>
+                  <Button
+                    onClick={() => updateMutation.mutate({ project: editingProject, form: editForm })}
+                    disabled={updateMutation.isPending || !editForm.titre || !editForm.description || !editForm.deadline}
+                  >
+                    Enregistrer
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );

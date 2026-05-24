@@ -1,17 +1,38 @@
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { DashboardLayout } from '@/components/DashboardLayout';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchEventsByOrganizer, deleteEvent } from '@/lib/api';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { deleteEvent, fetchEventsByOrganizer, updateEvent } from '@/lib/api';
 import { Event } from '@/lib/types';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CalendarDays, MapPin, Users, Plus } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { CalendarDays, MapPin, Plus, Users } from 'lucide-react';
 import { toast } from 'sonner';
+
+function toInputDateTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value.slice(0, 16);
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+}
 
 export default function OrgEventsPage() {
   const queryClient = useQueryClient();
   const { userEmail } = useAuth();
+  const [editingEvent, setEditingEvent] = useState<Event | null>(null);
+  const [editForm, setEditForm] = useState({
+    titre: '',
+    description: '',
+    type: '',
+    dateHeure: '',
+    lieu: '',
+    nombrePlaces: '',
+    partenaires: '',
+    affiche: '',
+  });
 
   const { data: events = [], isLoading } = useQuery<Event[]>({
     queryKey: ['events', userEmail],
@@ -22,14 +43,51 @@ export default function OrgEventsPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteEvent(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['events', userEmail] });
+      queryClient.invalidateQueries({ queryKey: ['events'] });
       toast.success('Événement supprimé');
     },
     onError: () => toast.error('Erreur lors de la suppression'),
   });
 
-  const handleDelete = (id: string) => {
-    if (confirm('Supprimer cet événement ?')) deleteMutation.mutate(id);
+  const updateMutation = useMutation({
+    mutationFn: ({ event, form }: { event: Event; form: typeof editForm }) =>
+      updateEvent(event.id, {
+        titre: form.titre,
+        description: form.description,
+        type: form.type,
+        organisateur: event.organisateur || userEmail,
+        dateHeure: form.dateHeure,
+        lieu: form.lieu,
+        nombrePlaces: Number(form.nombrePlaces) || 0,
+        partenaires: form.partenaires.split(',').map(p => p.trim()).filter(Boolean),
+        affiche: form.affiche,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['events'] });
+      toast.success('Événement modifié');
+      setEditingEvent(null);
+    },
+    onError: () => toast.error('Erreur lors de la modification'),
+  });
+
+  const handleDelete = (event: Event) => {
+    if (confirm(`Supprimer l'événement "${event.titre}" ?`)) {
+      deleteMutation.mutate(event.id);
+    }
+  };
+
+  const openEdit = (event: Event) => {
+    setEditingEvent(event);
+    setEditForm({
+      titre: event.titre,
+      description: event.description,
+      type: event.type,
+      dateHeure: toInputDateTime(event.dateHeure),
+      lieu: event.lieu,
+      nombrePlaces: String(event.nombrePlaces),
+      partenaires: event.partenaires.join(', '),
+      affiche: event.affiche || '',
+    });
   };
 
   return (
@@ -44,22 +102,20 @@ export default function OrgEventsPage() {
           </Link>
         </div>
 
-        {/* Summary cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
-            { label: 'Total', value: events.length, icon: CalendarDays, color: 'text-primary' },
-            { label: 'Participants', value: events.reduce((s, e) => s + (e.nombrePlaces - e.placesRestantes), 0), icon: Users, color: 'text-success' },
-            { label: 'Complets', value: events.filter(e => e.placesRestantes === 0).length, icon: CalendarDays, color: 'text-destructive' },
-            { label: 'Disponibles', value: events.filter(e => e.placesRestantes > 0).length, icon: MapPin, color: 'text-secondary' },
-          ].map((s, i) => (
-            <div key={i} className="bg-card rounded-xl border p-4 text-center">
+            { label: 'Total', value: events.length, color: 'text-primary' },
+            { label: 'Participants', value: events.reduce((s, e) => s + (e.nombrePlaces - e.placesRestantes), 0), color: 'text-success' },
+            { label: 'Complets', value: events.filter(e => e.placesRestantes === 0).length, color: 'text-destructive' },
+            { label: 'Disponibles', value: events.filter(e => e.placesRestantes > 0).length, color: 'text-secondary' },
+          ].map((s) => (
+            <div key={s.label} className="bg-card rounded-xl border p-4 text-center">
               <p className={`text-2xl font-display font-bold ${s.color}`}>{s.value}</p>
               <p className="text-xs text-muted-foreground mt-1">{s.label}</p>
             </div>
           ))}
         </div>
 
-        {/* Table */}
         <div className="bg-card rounded-xl border overflow-hidden">
           {isLoading ? (
             <div className="p-8 text-center text-muted-foreground">Chargement des événements...</div>
@@ -89,16 +145,10 @@ export default function OrgEventsPage() {
                     return (
                       <tr key={e.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
                         <td className="px-5 py-4 font-medium text-sm">{e.titre}</td>
-                        <td className="px-5 py-4">
-                          <Badge variant="outline" className="text-xs">{e.type}</Badge>
-                        </td>
-                        <td className="px-5 py-4 text-sm text-muted-foreground">
-                          {new Date(e.dateHeure).toLocaleDateString('fr-FR')}
-                        </td>
+                        <td className="px-5 py-4"><Badge variant="outline" className="text-xs">{e.type}</Badge></td>
+                        <td className="px-5 py-4 text-sm text-muted-foreground">{new Date(e.dateHeure).toLocaleDateString('fr-FR')}</td>
                         <td className="px-5 py-4 text-sm text-muted-foreground">{e.lieu}</td>
-                        <td className="px-5 py-4 text-sm text-muted-foreground">
-                          {filled}/{e.nombrePlaces}
-                        </td>
+                        <td className="px-5 py-4 text-sm text-muted-foreground">{filled}/{e.nombrePlaces}</td>
                         <td className="px-5 py-4">
                           <Badge variant={isFull ? 'destructive' : 'secondary'} className="text-xs">
                             {isFull ? 'Complet' : `${e.placesRestantes} places`}
@@ -106,14 +156,35 @@ export default function OrgEventsPage() {
                         </td>
                         <td className="px-5 py-4">
                           <div className="flex items-center justify-end gap-1">
-                            <Link to={`/events/${e.id}/edit`}>
-                              <Button variant="ghost" size="sm">Modifier</Button>
-                            </Link>
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button variant="ghost" size="sm">Voir</Button>
+                              </DialogTrigger>
+                              <DialogContent className="max-w-lg">
+                                <DialogHeader><DialogTitle>{e.titre}</DialogTitle></DialogHeader>
+                                <div className="space-y-3 text-sm">
+                                  <p className="text-muted-foreground">{e.description || 'Aucune description'}</p>
+                                  <div className="grid grid-cols-2 gap-3">
+                                    <div><p className="text-xs text-muted-foreground">Date</p><p>{new Date(e.dateHeure).toLocaleString('fr-FR')}</p></div>
+                                    <div><p className="text-xs text-muted-foreground">Lieu</p><p>{e.lieu}</p></div>
+                                    <div><p className="text-xs text-muted-foreground">Type</p><p>{e.type}</p></div>
+                                    <div><p className="text-xs text-muted-foreground">Participants</p><p>{filled}/{e.nombrePlaces}</p></div>
+                                  </div>
+                                  {e.partenaires.length > 0 && (
+                                    <div className="flex flex-wrap gap-1">
+                                      {e.partenaires.map(p => <Badge key={p} variant="outline">{p}</Badge>)}
+                                    </div>
+                                  )}
+                                </div>
+                              </DialogContent>
+                            </Dialog>
+                            <Button variant="ghost" size="sm" onClick={() => openEdit(e)}>Modifier</Button>
                             <Button
                               variant="ghost"
                               size="sm"
                               className="text-destructive"
-                              onClick={() => handleDelete(e.id)}
+                              onClick={() => handleDelete(e)}
+                              disabled={deleteMutation.isPending}
                             >
                               Supprimer
                             </Button>
@@ -127,6 +198,35 @@ export default function OrgEventsPage() {
             </div>
           )}
         </div>
+
+        <Dialog open={Boolean(editingEvent)} onOpenChange={(open) => !open && setEditingEvent(null)}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader><DialogTitle>Modifier l'événement</DialogTitle></DialogHeader>
+            {editingEvent && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Input value={editForm.titre} onChange={e => setEditForm({ ...editForm, titre: e.target.value })} placeholder="Titre" />
+                  <Input value={editForm.type} onChange={e => setEditForm({ ...editForm, type: e.target.value })} placeholder="Type" />
+                  <Input type="datetime-local" value={editForm.dateHeure} onChange={e => setEditForm({ ...editForm, dateHeure: e.target.value })} />
+                  <Input value={editForm.lieu} onChange={e => setEditForm({ ...editForm, lieu: e.target.value })} placeholder="Lieu" />
+                  <Input type="number" min="0" value={editForm.nombrePlaces} onChange={e => setEditForm({ ...editForm, nombrePlaces: e.target.value })} placeholder="Nombre de places" />
+                  <Input value={editForm.affiche} onChange={e => setEditForm({ ...editForm, affiche: e.target.value })} placeholder="URL affiche" />
+                </div>
+                <Textarea value={editForm.description} onChange={e => setEditForm({ ...editForm, description: e.target.value })} placeholder="Description" />
+                <Input value={editForm.partenaires} onChange={e => setEditForm({ ...editForm, partenaires: e.target.value })} placeholder="Partenaires séparés par des virgules" />
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setEditingEvent(null)}>Annuler</Button>
+                  <Button
+                    onClick={() => updateMutation.mutate({ event: editingEvent, form: editForm })}
+                    disabled={updateMutation.isPending || !editForm.titre || !editForm.dateHeure}
+                  >
+                    Enregistrer
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );

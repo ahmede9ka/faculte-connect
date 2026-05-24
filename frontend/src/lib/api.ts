@@ -345,6 +345,12 @@ export const fetchCurrentUser = async (): Promise<User | null> => {
         ? (u.competences as unknown[]).map(asString)
         : [],
       idUniversitaire: asString(u.idUniversitaire),
+      organizationType: asString(u.organizationType),
+      responsableNom: asString(u.responsableNom),
+      responsableEmail: asString(u.responsableEmail),
+      responsableTelephone: asString(u.responsableTelephone),
+      sponsors: Array.isArray(u.sponsors) ? (u.sponsors as unknown[]).map(asString) : [],
+      logo: asString(u.logo),
     };
   } catch {
     return null;
@@ -358,6 +364,12 @@ export const updateUserProfile = async (profileData: {
   idUniversitaire?: string;
   competences?: string[];
   avatar?: string;
+  organizationType?: string;
+  responsableNom?: string;
+  responsableEmail?: string;
+  responsableTelephone?: string;
+  sponsors?: string[];
+  logo?: string;
 }): Promise<User> => {
   const email = getAuthEmail();
   if (!email) throw new Error("Not authenticated");
@@ -391,6 +403,12 @@ export const updateUserProfile = async (profileData: {
       ? (u.competences as unknown[]).map(asString)
       : [],
     idUniversitaire: asString(u.idUniversitaire),
+    organizationType: asString(u.organizationType),
+    responsableNom: asString(u.responsableNom),
+    responsableEmail: asString(u.responsableEmail),
+    responsableTelephone: asString(u.responsableTelephone),
+    sponsors: Array.isArray(u.sponsors) ? (u.sponsors as unknown[]).map(asString) : [],
+    logo: asString(u.logo),
   };
 };
 
@@ -462,6 +480,36 @@ export const deleteProject = async (id: string): Promise<void> => {
   await apiJson<void>(`/projets/${encodeURIComponent(id)}`, {
     method: "DELETE",
   });
+};
+
+export const updateProject = async (
+  id: string,
+  projectData: {
+    titre: string;
+    desc: string;
+    chefProjet: string;
+    organisation: string;
+    deadline: string;
+    status?: string;
+    membres?: string[];
+    objectifs?: string[];
+    ressources?: Array<{ nom: string; valeur: string }>;
+    affectations?: Record<string, string[]>;
+  }
+): Promise<Project> => {
+  const projetRaw = await apiJson<ProjetRaw>(`/projets/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      ...projectData,
+      validite: true,
+      membres: projectData.membres,
+      objectifs: projectData.objectifs,
+      ressources: projectData.ressources,
+      affectations: projectData.affectations,
+    }),
+  });
+  return mapProject(projetRaw);
 };
 
 // ==================== PROJECT MEMBERS ====================
@@ -1008,14 +1056,10 @@ export const fetchRecommendations = async (): Promise<Recommendation[]> => {
   const email = getAuthEmail();
   if (!email) return [];
 
-  try {
-    const recommendationsRaw = await apiJson<RecommendationRaw[]>(
-      `/recommendations/user/${encodeURIComponent(email)}`
-    );
-    return recommendationsRaw.map(mapRecommendation);
-  } catch {
-    return [];
-  }
+  const recommendationsRaw = await apiJson<RecommendationRaw[]>(
+    `/recommendations/user/${encodeURIComponent(email)}`
+  );
+  return recommendationsRaw.map(mapRecommendation);
 };
 
 export const refreshRecommendations = async (): Promise<Recommendation[]> => {
