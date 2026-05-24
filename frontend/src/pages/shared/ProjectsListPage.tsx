@@ -1,21 +1,23 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { StatusBadge } from '@/components/StatusBadge';
 import { ProgressBar } from '@/components/ProgressBar';
-import { fetchMyProjects, fetchProjects, fetchProjectsByOrganisation } from '@/lib/api';
+import { deleteProject, fetchMyProjects, fetchProjects, fetchProjectsByOrganisation } from '@/lib/api';
 import { Project } from '@/lib/types';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Search, Eye, Pencil, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function ProjectsListPage() {
   const { userRole, userName } = useAuth();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const queryClient = useQueryClient();
 
   const { data: projects = [], isLoading } = useQuery<Project[]>({
     queryKey: ['projects', 'list', userRole, userName],
@@ -32,6 +34,24 @@ export default function ProjectsListPage() {
     const matchStatus = statusFilter === 'all' || p.statut === statusFilter;
     return matchSearch && matchStatus;
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: (projectId: string) => deleteProject(projectId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-dashboard'] });
+      toast.success('Projet supprimé');
+    },
+    onError: () => {
+      toast.error('Erreur lors de la suppression');
+    },
+  });
+
+  const handleDelete = (project: Project) => {
+    if (confirm(`Supprimer le projet "${project.titre}" ?`)) {
+      deleteMutation.mutate(project.id);
+    }
+  };
 
   return (
     <DashboardLayout>
@@ -89,8 +109,18 @@ export default function ProjectsListPage() {
                       <td className="px-5 py-4">
                         <div className="flex items-center justify-end gap-1">
                           <Link to={`/projects/${p.id}`}><Button variant="ghost" size="sm"><Eye className="h-4 w-4" /></Button></Link>
-                          <Button variant="ghost" size="sm"><Pencil className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="sm" className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                          {userRole === 'organization' && <Button variant="ghost" size="sm"><Pencil className="h-4 w-4" /></Button>}
+                          {(userRole === 'organization' || userRole === 'admin') && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive"
+                              onClick={() => handleDelete(p)}
+                              disabled={deleteMutation.isPending}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </tr>

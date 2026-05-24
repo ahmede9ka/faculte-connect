@@ -36,7 +36,9 @@ const adminNav = [
   { title: 'Dashboard', url: '/dashboard/admin', icon: LayoutDashboard },
   { title: 'Étudiants', url: '/admin/students', icon: GraduationCap },
   { title: 'Organisations', url: '/admin/organizations', icon: Building2 },
-  { title: 'Statistiques', url: '/statistics', icon: BarChart3 },
+  { title: 'Projets', url: '/admin/projects', icon: FolderKanban },
+  { title: 'Événements', url: '/admin/events', icon: CalendarDays },
+  { title: 'Statistiques', url: '/admin/statistics', icon: BarChart3 },
 ];
 
 const ROLE_KEY = 'active_role';

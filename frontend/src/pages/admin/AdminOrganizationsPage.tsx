@@ -1,50 +1,41 @@
 import { useState } from 'react';
 import { DashboardLayout } from '@/components/DashboardLayout';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AdminUser, deleteUser, fetchAdminOrganizations } from '@/lib/api';
 import { Search, Building2, Trash2, Eye, FolderKanban, CalendarDays } from 'lucide-react';
-
-interface OrgUser {
-  id: string;
-  name: string;
-  email: string;
-  organizationType?: string;
-  responsableNom?: string;
-  responsableEmail?: string;
-  sponsors?: string[];
-}
-
-async function fetchAllOrganizations(): Promise<OrgUser[]> {
-  try {
-    const token = localStorage.getItem('auth_token');
-    const headers: Record<string, string> = {};
-    if (token) headers.Authorization = `Bearer ${token}`;
-    const res = await fetch('/auth/users?role=ORGANISATION', { headers });
-    if (!res.ok) throw new Error('Failed');
-    const data = await res.json();
-    return Array.isArray(data) ? data.map((u: Record<string, unknown>) => ({
-      id: String(u.id ?? ''),
-      name: String(u.name ?? u.email ?? ''),
-      email: String(u.email ?? ''),
-      organizationType: String(u.organizationType ?? ''),
-      responsableNom: String(u.responsableNom ?? ''),
-      responsableEmail: String(u.responsableEmail ?? ''),
-      sponsors: Array.isArray(u.sponsors) ? u.sponsors.map(String) : [],
-    })) : [];
-  } catch {
-    return [];
-  }
-}
+import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
 
 export default function AdminOrganizationsPage() {
   const [search, setSearch] = useState('');
+  const queryClient = useQueryClient();
 
-  const { data: orgs = [], isLoading } = useQuery<OrgUser[]>({
+  const { data: orgs = [], isLoading } = useQuery<AdminUser[]>({
     queryKey: ['admin-organizations'],
-    queryFn: fetchAllOrganizations,
+    queryFn: fetchAdminOrganizations,
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: (email: string) => deleteUser(email),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-organizations'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-dashboard'] });
+      toast.success('Organisation supprimée');
+    },
+    onError: () => {
+      toast.error('Erreur lors de la suppression');
+    },
+  });
+
+  const handleDelete = (organization: AdminUser) => {
+    if (confirm(`Supprimer ${organization.name || organization.email} ?`)) {
+      deleteMutation.mutate(organization.email);
+    }
+  };
 
   const filtered = orgs.filter(o =>
     o.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -148,16 +139,61 @@ export default function AdminOrganizationsPage() {
                 )}
 
                 <div className="flex items-center gap-2 pt-1 border-t">
-                  <Button variant="ghost" size="sm" className="gap-1 flex-1 text-xs">
-                    <FolderKanban className="h-3.5 w-3.5" /> Projets
+                  <Button variant="ghost" size="sm" className="gap-1 flex-1 text-xs" asChild>
+                    <Link to="/admin/projects"><FolderKanban className="h-3.5 w-3.5" /> Projets</Link>
                   </Button>
-                  <Button variant="ghost" size="sm" className="gap-1 flex-1 text-xs">
-                    <CalendarDays className="h-3.5 w-3.5" /> Événements
+                  <Button variant="ghost" size="sm" className="gap-1 flex-1 text-xs" asChild>
+                    <Link to="/admin/events"><CalendarDays className="h-3.5 w-3.5" /> Événements</Link>
                   </Button>
-                  <Button variant="ghost" size="sm" className="gap-1 text-xs">
-                    <Eye className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button variant="ghost" size="sm" className="text-destructive text-xs">
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="ghost" size="sm" className="gap-1 text-xs" aria-label={`Voir ${o.name}`}>
+                      <Eye className="h-3.5 w-3.5" />
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-md">
+                      <DialogHeader>
+                        <DialogTitle>{o.name || 'Organisation'}</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-3 text-sm">
+                        <div>
+                          <p className="text-xs text-muted-foreground">Email</p>
+                          <a className="text-primary hover:underline" href={`mailto:${o.email}`}>{o.email}</a>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <p className="text-xs text-muted-foreground">Type</p>
+                            <p>{o.organizationType || '—'}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Responsable</p>
+                            <p>{o.responsableNom || '—'}</p>
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Email responsable</p>
+                          {o.responsableEmail
+                            ? <a className="text-primary hover:underline" href={`mailto:${o.responsableEmail}`}>{o.responsableEmail}</a>
+                            : <p>—</p>}
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-2">Sponsors</p>
+                          <div className="flex flex-wrap gap-1">
+                            {(o.sponsors ?? []).length > 0
+                              ? o.sponsors!.map(sponsor => <Badge key={sponsor} variant="outline">{sponsor}</Badge>)
+                              : <span className="text-muted-foreground">Aucun sponsor renseigné</span>}
+                          </div>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive text-xs"
+                    onClick={() => handleDelete(o)}
+                    disabled={deleteMutation.isPending}
+                  >
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </div>

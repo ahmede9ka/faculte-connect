@@ -86,6 +86,9 @@ function AppRoutes() {
       <Route path="/members" element={<ProtectedRoute><MembersPage /></ProtectedRoute>} />
       <Route path="/admin/students" element={<RoleProtectedRoute allowed={["admin"]}><AdminStudentsPage /></RoleProtectedRoute>} />
       <Route path="/admin/organizations" element={<RoleProtectedRoute allowed={["admin"]}><AdminOrganizationsPage /></RoleProtectedRoute>} />
+      <Route path="/admin/projects" element={<RoleProtectedRoute allowed={["admin"]}><ProjectsListPage /></RoleProtectedRoute>} />
+      <Route path="/admin/events" element={<RoleProtectedRoute allowed={["admin"]}><EventsPage /></RoleProtectedRoute>} />
+      <Route path="/admin/statistics" element={<RoleProtectedRoute allowed={["admin"]}><StatisticsPage /></RoleProtectedRoute>} />
       {/* Student-specific routes */}
       <Route path="/student/projects" element={<RoleProtectedRoute allowed={["student"]}><StudentProjectsPage /></RoleProtectedRoute>} />
       <Route path="/student/tasks" element={<RoleProtectedRoute allowed={["student"]}><TasksPage /></RoleProtectedRoute>} />

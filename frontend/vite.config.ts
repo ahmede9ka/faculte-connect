@@ -2,6 +2,12 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 
+function bypassHtmlNavigation(req: { headers: { accept?: string }; url?: string }) {
+  if (req.headers.accept?.includes("text/html")) {
+    return req.url;
+  }
+}
+
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
@@ -26,6 +32,7 @@ export default defineConfig(({ mode }) => ({
         // Spring API gateway
         target: "http://localhost:8080",
         changeOrigin: true,
+        bypass: bypassHtmlNavigation,
       },
       "/notifications": {
         // Spring API gateway
@@ -36,6 +43,7 @@ export default defineConfig(({ mode }) => ({
         // Spring API gateway
         target: "http://localhost:8080",
         changeOrigin: true,
+        bypass: bypassHtmlNavigation,
       },
       "/lists": {
         // Spring API gateway

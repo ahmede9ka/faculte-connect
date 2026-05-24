@@ -6,22 +6,18 @@ spring:
     name: AUTH-SERVICE
 
   datasource:
-    url: jdbc:mysql://localhost:3306/auth_db?createDatabaseIfNotExist=true
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3308}/auth_db?createDatabaseIfNotExist=true
     username: root
-    password: foufoufourat123
+    password: ${MYSQL_PASSWORD:}
 
   jpa:
-    show-sql: true
     hibernate:
       ddl-auto: update
-
-  flyway:
-    enabled: false
+    show-sql: true
 
   main:
     allow-bean-definition-overriding: true
-
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka/
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}

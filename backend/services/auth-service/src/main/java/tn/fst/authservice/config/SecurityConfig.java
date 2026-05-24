@@ -3,6 +3,7 @@ package tn.fst.authservice.config;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -32,6 +33,7 @@ public class SecurityConfig {
                             .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                     )
                     .authorizeHttpRequests(auth -> auth
+                            .requestMatchers(HttpMethod.DELETE, "/auth/users/**").hasRole("ADMIN")
                             .requestMatchers("/auth/**").permitAll()
                             .requestMatchers("/admin/**").hasRole("ADMIN")
                             .anyRequest().authenticated()

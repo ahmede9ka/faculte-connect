@@ -1,50 +1,40 @@
 import { useState } from 'react';
 import { DashboardLayout } from '@/components/DashboardLayout';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AdminUser, deleteUser, fetchAdminStudents } from '@/lib/api';
 import { Search, User, GraduationCap, Trash2, Eye } from 'lucide-react';
-
-interface StudentUser {
-  id: string;
-  name: string;
-  email: string;
-  faculte?: string;
-  specialite?: string;
-  idUniversitaire?: string;
-  competences?: string[];
-}
-
-async function fetchAllStudents(): Promise<StudentUser[]> {
-  try {
-    const token = localStorage.getItem('auth_token');
-    const headers: Record<string, string> = {};
-    if (token) headers.Authorization = `Bearer ${token}`;
-    const res = await fetch('/auth/users?role=INDIVIDU', { headers });
-    if (!res.ok) throw new Error('Failed');
-    const data = await res.json();
-    return Array.isArray(data) ? data.map((u: Record<string, unknown>) => ({
-      id: String(u.id ?? ''),
-      name: String(u.name ?? u.email ?? ''),
-      email: String(u.email ?? ''),
-      faculte: String(u.faculte ?? ''),
-      specialite: String(u.specialite ?? ''),
-      idUniversitaire: String(u.idUniversitaire ?? ''),
-      competences: Array.isArray(u.competences) ? u.competences.map(String) : [],
-    })) : [];
-  } catch {
-    return [];
-  }
-}
+import { toast } from 'sonner';
 
 export default function AdminStudentsPage() {
   const [search, setSearch] = useState('');
+  const queryClient = useQueryClient();
 
-  const { data: students = [], isLoading } = useQuery<StudentUser[]>({
+  const { data: students = [], isLoading } = useQuery<AdminUser[]>({
     queryKey: ['admin-students'],
-    queryFn: fetchAllStudents,
+    queryFn: fetchAdminStudents,
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: (email: string) => deleteUser(email),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-students'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-dashboard'] });
+      toast.success('Étudiant supprimé');
+    },
+    onError: () => {
+      toast.error('Erreur lors de la suppression');
+    },
+  });
+
+  const handleDelete = (student: AdminUser) => {
+    if (confirm(`Supprimer ${student.name || student.email} ?`)) {
+      deleteMutation.mutate(student.email);
+    }
+  };
 
   const filtered = students.filter(s =>
     s.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -142,8 +132,55 @@ export default function AdminStudentsPage() {
                       </td>
                       <td className="px-5 py-4">
                         <div className="flex items-center justify-end gap-1">
-                          <Button variant="ghost" size="sm"><Eye className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="sm" className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button variant="ghost" size="sm" aria-label={`Voir ${s.name}`}>
+                               <Eye className="h-4 w-4" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-md">
+                              <DialogHeader>
+                                <DialogTitle>{s.name || 'Étudiant'}</DialogTitle>
+                              </DialogHeader>
+                              <div className="space-y-3 text-sm">
+                                <div>
+                                  <p className="text-xs text-muted-foreground">Email</p>
+                                  <a className="text-primary hover:underline" href={`mailto:${s.email}`}>{s.email}</a>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div>
+                                    <p className="text-xs text-muted-foreground">ID universitaire</p>
+                                    <p>{s.idUniversitaire || '—'}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-muted-foreground">Faculté</p>
+                                    <p>{s.faculte || '—'}</p>
+                                  </div>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-muted-foreground">Spécialité</p>
+                                  <p>{s.specialite || '—'}</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-muted-foreground mb-2">Compétences</p>
+                                  <div className="flex flex-wrap gap-1">
+                                    {(s.competences ?? []).length > 0
+                                      ? s.competences!.map(c => <Badge key={c} variant="secondary">{c}</Badge>)
+                                      : <span className="text-muted-foreground">Aucune compétence renseignée</span>}
+                                  </div>
+                                </div>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive"
+                            onClick={() => handleDelete(s)}
+                            disabled={deleteMutation.isPending}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </td>
                     </tr>

@@ -137,6 +137,12 @@ public class AuthService {
         return mapToUserResponse(updated);
     }
 
+    public void deleteUser(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found: " + email));
+        userRepository.delete(user);
+    }
+
     private UserResponse mapToUserResponse(User user) {
         UserResponse response = new UserResponse();
         response.setId(user.getId());

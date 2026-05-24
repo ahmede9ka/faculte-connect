@@ -48,6 +48,12 @@ type UserRaw = {
   idUniversitaire?: unknown;
   competences?: unknown;
   avatar?: unknown;
+  organizationType?: unknown;
+  responsableNom?: unknown;
+  responsableEmail?: unknown;
+  responsableTelephone?: unknown;
+  sponsors?: unknown;
+  logo?: unknown;
 };
 
 export type AuthRegisterPayload = {
@@ -55,6 +61,24 @@ export type AuthRegisterPayload = {
   password: string;
   name: string;
   role: "INDIVIDU" | "ORGANISATION" | "ADMIN";
+  faculte?: string;
+  specialite?: string;
+  idUniversitaire?: string;
+  competences?: string[];
+  avatar?: string;
+  organizationType?: string;
+  responsableNom?: string;
+  responsableEmail?: string;
+  responsableTelephone?: string;
+  sponsors?: string[];
+  logo?: string;
+};
+
+export type AdminUser = {
+  id: string;
+  name: string;
+  email: string;
+  role: "INDIVIDU" | "ORGANISATION" | "ADMIN" | string;
   faculte?: string;
   specialite?: string;
   idUniversitaire?: string;
@@ -88,6 +112,28 @@ function asNumber(v: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+function mapAdminUser(u: UserRaw): AdminUser {
+  return {
+    id: asString(u.id),
+    name: asString(u.name || u.email),
+    email: asString(u.email),
+    role: asString(u.role),
+    faculte: asString(u.faculte),
+    specialite: asString(u.specialite),
+    idUniversitaire: asString(u.idUniversitaire),
+    competences: Array.isArray(u.competences)
+      ? (u.competences as unknown[]).map(asString)
+      : [],
+    avatar: asString(u.avatar),
+    organizationType: asString(u.organizationType),
+    responsableNom: asString(u.responsableNom),
+    responsableEmail: asString(u.responsableEmail),
+    responsableTelephone: asString(u.responsableTelephone),
+    sponsors: Array.isArray(u.sponsors) ? (u.sponsors as unknown[]).map(asString) : [],
+    logo: asString(u.logo),
+  };
+}
+
 export const login = async (email: string, password: string): Promise<{ token: string }> => {
   return apiJson<{ token: string }>(`/auth/login`, {
     method: "POST",
@@ -106,6 +152,31 @@ export const registerUser = async (payload: AuthRegisterPayload): Promise<{ toke
 
 export const fetchUserByEmail = async (email: string): Promise<UserRaw> => {
   return apiJson<UserRaw>(`/auth/users/${encodeURIComponent(email)}`);
+};
+
+export const fetchUsersByRole = async (
+  role: "INDIVIDU" | "ORGANISATION" | "ADMIN"
+): Promise<AdminUser[]> => {
+  try {
+    const users = await apiJson<UserRaw[]>(`/auth/users?role=${encodeURIComponent(role)}`);
+    return Array.isArray(users) ? users.map(mapAdminUser) : [];
+  } catch {
+    return [];
+  }
+};
+
+export const fetchAdminStudents = async (): Promise<AdminUser[]> => {
+  return fetchUsersByRole("INDIVIDU");
+};
+
+export const fetchAdminOrganizations = async (): Promise<AdminUser[]> => {
+  return fetchUsersByRole("ORGANISATION");
+};
+
+export const deleteUser = async (email: string): Promise<void> => {
+  await apiJson<void>(`/auth/users/${encodeURIComponent(email)}`, {
+    method: "DELETE",
+  });
 };
 
 // FIX: use text/plain for DELETE/PATCH with no body to avoid 415 errors;
@@ -385,6 +456,12 @@ export const fetchMyProjects = async (): Promise<Project[]> => {
 export const fetchProject = async (id: string): Promise<Project> => {
   const p = await apiJson<ProjetRaw>(`/projets/${encodeURIComponent(id)}`);
   return mapProject(p);
+};
+
+export const deleteProject = async (id: string): Promise<void> => {
+  await apiJson<void>(`/projets/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
 };
 
 // ==================== PROJECT MEMBERS ====================

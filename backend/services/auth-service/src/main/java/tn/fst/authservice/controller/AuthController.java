@@ -52,4 +52,10 @@ public class AuthController {
             @RequestBody UpdateProfileRequest request) {
         return ResponseEntity.ok(authService.updateProfile(email, request));
     }
+
+    @DeleteMapping("/users/{email}")
+    public ResponseEntity<Void> deleteUser(@PathVariable String email) {
+        authService.deleteUser(email);
+        return ResponseEntity.noContent().build();
+    }
 }
