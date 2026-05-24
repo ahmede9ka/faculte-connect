@@ -27,8 +27,10 @@ public class AuthFilter extends OncePerRequestFilter {
 
         String path = request.getRequestURI();
 
-        // ✅ Skip JWT check for auth routes
-        if (path.startsWith("/auth/")) {
+        // ✅ Skip JWT check for public routes
+        if (path.startsWith("/auth/")
+            || path.equals("/projets/public")
+            || path.startsWith("/projets/public/")) {
             filterChain.doFilter(request, response);
             return;
         }

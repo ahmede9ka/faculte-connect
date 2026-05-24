@@ -24,7 +24,12 @@ public class ChatService {
         Projet projet = projetRepository.findById(request.getProjectId())
                 .orElseThrow(() -> new RuntimeException("Projet not found: " + request.getProjectId()));
 
-        if (projet.getMembres() == null || !projet.getMembres().contains(request.getSenderEmail())) {
+        boolean isChef = request.getSenderEmail() != null
+            && request.getSenderEmail().equals(projet.getChefProjet());
+        boolean isMember = projet.getMembres() != null
+            && projet.getMembres().contains(request.getSenderEmail());
+
+        if (!isChef && !isMember) {
             throw new RuntimeException("Sender is not a member of this project");
         }
 
