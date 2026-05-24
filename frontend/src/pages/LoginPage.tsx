@@ -9,10 +9,12 @@ import { useAuth } from '@/lib/auth-context';
 import { UserRole } from '@/lib/types';
 
 const personas: Array<{ label: string; role: UserRole; icon: typeof GraduationCap; color: string; }> = [
-  { label: 'Étudiant', role: 'student', icon: GraduationCap, color: 'border-blue-400 hover:bg-blue-50' },
-  { label: 'Organisation', role: 'organization', icon: Building2, color: 'border-emerald-400 hover:bg-emerald-50' },
-  { label: 'Admin', role: 'admin', icon: ShieldCheck, color: 'border-purple-400 hover:bg-purple-50' },
+  { label: 'Étudiant', role: 'student', icon: GraduationCap, color: 'border-primary/40 hover:bg-primary/10' },
+  { label: 'Organisation', role: 'organization', icon: Building2, color: 'border-secondary/40 hover:bg-secondary/15' },
+  { label: 'Admin', role: 'admin', icon: ShieldCheck, color: 'border-accent/40 hover:bg-accent/10' },
 ];
+
+const FST_LOGO_URL = 'https://upload.wikimedia.org/wikipedia/fr/8/8d/FSTLOGO.svg';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -46,10 +48,10 @@ export default function LoginPage() {
         <div className="w-full max-w-md space-y-8">
           <div>
             <Link to="/" className="inline-flex items-center gap-2 mb-8">
-              <div className="h-9 w-9 rounded-lg gradient-primary flex items-center justify-center">
-                <GraduationCap className="h-5 w-5 text-primary-foreground" />
+              <div className="h-9 w-9 rounded-lg bg-white border border-border flex items-center justify-center p-1">
+                <img src={FST_LOGO_URL} alt="FST" className="h-full w-full object-contain" />
               </div>
-              <span className="font-display font-bold">FST Projects</span>
+              <span className="font-display font-bold">FSTEAM</span>
             </Link>
             <h1 className="font-display text-2xl font-bold">Connexion</h1>
             <p className="text-muted-foreground mt-1">Choisissez votre profil ou connectez-vous</p>

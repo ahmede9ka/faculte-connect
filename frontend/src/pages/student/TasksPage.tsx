@@ -1,7 +1,13 @@
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { StatusBadge, PriorityBadge } from "@/components/StatusBadge";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchTasks, updateTask } from "@/lib/api";
+import {
+  addTaskComment,
+  fetchProjectMembers,
+  fetchTasks,
+  replaceTaskMembers,
+  updateTask,
+} from "@/lib/api";
 import { Task } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +25,8 @@ import { useEffect, useState } from "react";
 import { Clock } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
+import { SmartImage } from "@/components/SmartImage";
+import { avatarPhoto, imageCandidates } from "@/lib/images";
 
 function getDeadlineAlert(deadline?: string) {
   if (!deadline) return null;
@@ -151,7 +159,7 @@ const statusOrder: Record<Task["statut"], number> = {
 };
 
 export default function TasksPage() {
-  const { userEmail } = useAuth();
+  const { userEmail, userName } = useAuth();
   const [view, setView] = useState<"board" | "calendar">("board");
   const [updates, setUpdates] = useState<
     Record<string, { note: string; percent: number }>
@@ -159,6 +167,7 @@ export default function TasksPage() {
   const [dragTaskId, setDragTaskId] = useState<string | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
   const [columns, setColumns] = useState<BoardColumn[]>([
     columnTemplates[0],
     columnTemplates[1],
@@ -174,6 +183,22 @@ export default function TasksPage() {
   const { data: tasks = [], isLoading } = useQuery<Task[]>({
     queryKey: ["tasks"],
     queryFn: fetchTasks,
+  });
+
+  const projectIds = Array.from(new Set(tasks.map((task) => task.projectId).filter(Boolean)));
+
+  const { data: projectMembers = {} } = useQuery<Record<string, string[]>>({
+    queryKey: ["task-members", projectIds],
+    queryFn: async () => {
+      const entries = await Promise.all(
+        projectIds.map(async (projectId) => {
+          const members = await fetchProjectMembers(projectId);
+          return [projectId, members] as const;
+        })
+      );
+      return Object.fromEntries(entries);
+    },
+    enabled: projectIds.length > 0,
   });
 
   const tasksByStatus = columns.map((col) => ({
@@ -215,6 +240,33 @@ export default function TasksPage() {
       toast.success("Mise à jour enregistrée");
     },
     onError: () => toast.error("Impossible d'enregistrer la mise à jour"),
+  });
+
+  const assignMutation = useMutation({
+    mutationFn: ({ task, assignee }: { task: Task; assignee: string }) =>
+      replaceTaskMembers(task.projectId, task.id, [assignee]),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["projects", "details"] });
+      toast.success("Tache assignee");
+    },
+    onError: () => toast.error("Impossible d'assigner la tache"),
+  });
+
+  const commentMutation = useMutation({
+    mutationFn: ({ task, message }: { task: Task; message: string }) =>
+      addTaskComment(task.projectId, task.id, {
+        authorName: userName || userEmail || "Utilisateur",
+        authorEmail: userEmail || "",
+        message,
+      }),
+    onSuccess: (_, { task }) => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["projects", "details"] });
+      setCommentDrafts((prev) => ({ ...prev, [task.id]: "" }));
+      toast.success("Commentaire ajoute");
+    },
+    onError: () => toast.error("Impossible d'ajouter le commentaire"),
   });
 
   useEffect(() => {
@@ -261,6 +313,28 @@ export default function TasksPage() {
         percent,
       },
     }));
+  };
+
+  const handleAssign = (task: Task, assignee: string) => {
+    if (isTaskCompleted(task)) {
+      toast.error("Tache terminee — assignment verrouille");
+      return;
+    }
+    if (!assignee) return;
+    assignMutation.mutate({ task, assignee });
+  };
+
+  const handleAddComment = (task: Task) => {
+    const message = commentDrafts[task.id]?.trim() || "";
+    if (!message) {
+      toast.error("Le commentaire ne peut pas etre vide");
+      return;
+    }
+    if (!userEmail) {
+      toast.error("Veuillez vous connecter");
+      return;
+    }
+    commentMutation.mutate({ task, message });
   };
 
   const handleDragStart = (task: Task, event: React.DragEvent) => {
@@ -416,7 +490,9 @@ export default function TasksPage() {
                             Aucune tache
                           </div>
                         )}
-                        {column.items.map((t) => (
+                        {column.items.map((t) => {
+                          const taskMembers = projectMembers[t.projectId] || [];
+                          return (
                           <div
                             key={t.id}
                             draggable={!isTaskCompleted(t)}
@@ -446,13 +522,41 @@ export default function TasksPage() {
                             </div>
                             <div className="mt-2 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
                               <div className="flex items-center gap-2 min-w-0">
-                                <div className="h-5 w-5 rounded-full bg-muted flex items-center justify-center text-[10px] font-semibold text-muted-foreground">
-                                  {getInitials(
-                                    t.assigneNom || t.assigneA || "?",
-                                  )}
-                                </div>
+                                <Select
+                                  value={t.assigneA || ""}
+                                  onValueChange={(value) => handleAssign(t, value)}
+                                >
+                                  <SelectTrigger
+                                    className="h-6 w-6 rounded-full border bg-muted p-0 pr-0 shadow-none [&>svg]:hidden"
+                                    onClick={(event) => event.stopPropagation()}
+                                  >
+                                    {t.assigneA ? (
+                                      <SmartImage
+                                        sources={imageCandidates("", avatarPhoto(t.assigneA))}
+                                        alt={t.assigneA}
+                                        className="h-6 w-6 rounded-full object-cover"
+                                      />
+                                    ) : (
+                                      <span className="text-[10px] font-semibold text-muted-foreground">
+                                        {getInitials(t.assigneNom || t.assigneA || "?")}
+                                      </span>
+                                    )}
+                                  </SelectTrigger>
+                                  <SelectContent onClick={(event) => event.stopPropagation()}>
+                                    {taskMembers.length === 0 && (
+                                      <div className="px-2 py-1 text-xs text-muted-foreground">
+                                        Aucun membre
+                                      </div>
+                                    )}
+                                    {taskMembers.map((email) => (
+                                      <SelectItem key={email} value={email}>
+                                        {email}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
                                 <span className="truncate">
-                                  {t.assigneNom || t.assigneA}
+                                  {t.assigneNom || t.assigneA || "Non assignee"}
                                 </span>
                               </div>
                               <div className="flex items-center gap-1 shrink-0">
@@ -476,7 +580,8 @@ export default function TasksPage() {
                               <StatusBadge status={t.statut} />
                             </div>
                           </div>
-                        ))}
+                        );
+                        })}
                       </div>
                     </div>
                   ))
@@ -538,7 +643,21 @@ export default function TasksPage() {
                         Commentaires
                       </Label>
                       <div className="space-y-2">
-                        {selectedTask.commentaire && (
+                        {selectedTask.comments && selectedTask.comments.length > 0 ? (
+                          selectedTask.comments.map((comment) => (
+                            <div key={comment.id} className="rounded-lg border bg-muted/20 p-3 text-sm">
+                              <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                                <span>{comment.authorName || comment.authorEmail}</span>
+                                <span>
+                                  {comment.createdAt
+                                    ? new Date(comment.createdAt).toLocaleString("fr-FR")
+                                    : ""}
+                                </span>
+                              </div>
+                              <div className="text-foreground">{comment.message}</div>
+                            </div>
+                          ))
+                        ) : selectedTask.commentaire ? (
                           <div className="rounded-lg border bg-muted/20 p-3 text-sm">
                             <div className="text-xs text-muted-foreground mb-1">
                               Dernier commentaire
@@ -547,23 +666,35 @@ export default function TasksPage() {
                               {selectedTask.commentaire}
                             </div>
                           </div>
-                        )}
-                        {selectedNote &&
-                          selectedNote !== selectedTask.commentaire && (
-                            <div className="rounded-lg border bg-primary/5 p-3 text-sm">
-                              <div className="text-xs text-muted-foreground mb-1">
-                                Brouillon
-                              </div>
-                              <div className="text-foreground">
-                                {selectedNote}
-                              </div>
-                            </div>
-                          )}
-                        {!selectedTask.commentaire && !selectedNote && (
+                        ) : (
                           <div className="text-xs text-muted-foreground">
                             Aucun commentaire pour le moment.
                           </div>
                         )}
+                      </div>
+                      <div className="space-y-2">
+                        <Textarea
+                          value={commentDrafts[selectedTask.id] ?? ""}
+                          onChange={(event) =>
+                            setCommentDrafts((prev) => ({
+                              ...prev,
+                              [selectedTask.id]: event.target.value,
+                            }))
+                          }
+                          placeholder="Ajouter un commentaire..."
+                          rows={3}
+                          className="text-xs"
+                        />
+                        <div className="flex justify-end">
+                          <Button
+                            size="sm"
+                            className="text-xs"
+                            onClick={() => handleAddComment(selectedTask)}
+                            disabled={commentMutation.isPending}
+                          >
+                            {commentMutation.isPending ? "Envoi..." : "Ajouter"}
+                          </Button>
+                        </div>
                       </div>
                     </div>
 

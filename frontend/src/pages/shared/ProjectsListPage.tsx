@@ -19,6 +19,7 @@ export default function ProjectsListPage() {
   const { userRole, userName } = useAuth();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
   const queryClient = useQueryClient();
 
   const { data: projects = [], isLoading } = useQuery<Project[]>({
@@ -31,10 +32,17 @@ export default function ProjectsListPage() {
     enabled: userRole !== 'organization' || Boolean(userName),
   });
 
+  const categories = Array.from(new Set(projects.map(p => p.categorie).filter(Boolean))).sort();
+  const searchValue = search.trim().toLowerCase();
   const filtered = projects.filter(p => {
-    const matchSearch = p.titre.toLowerCase().includes(search.toLowerCase());
+    const matchSearch = !searchValue || [
+      p.titre,
+      p.categorie,
+      p.chefDeProjetNom,
+    ].some(value => (value || '').toLowerCase().includes(searchValue));
     const matchStatus = statusFilter === 'all' || p.statut === statusFilter;
-    return matchSearch && matchStatus;
+    const matchCategory = categoryFilter === 'all' || p.categorie === categoryFilter;
+    return matchSearch && matchStatus && matchCategory;
   });
 
   const deleteMutation = useMutation({
@@ -80,6 +88,15 @@ export default function ProjectsListPage() {
               <SelectItem value="En cours">En cours</SelectItem>
               <SelectItem value="Terminé">Terminé</SelectItem>
               <SelectItem value="En Retard">En Retard</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="w-[200px]"><SelectValue placeholder="Categorie" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Toutes les categories</SelectItem>
+              {categories.map(category => (
+                <SelectItem key={category} value={category}>{category}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>

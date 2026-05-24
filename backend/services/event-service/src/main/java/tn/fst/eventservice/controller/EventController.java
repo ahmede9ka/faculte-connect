@@ -5,6 +5,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import tn.fst.eventservice.dto.CommentRequest;
+import tn.fst.eventservice.dto.CommentResponse;
 import tn.fst.eventservice.dto.EventRequest;
 import tn.fst.eventservice.dto.EventResponse;
 import tn.fst.eventservice.dto.ParticipationRequest;
@@ -84,5 +86,17 @@ public class EventController {
             @PathVariable String email) {
         EventResponse response = eventService.cancelParticipation(id, email);
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/{id}/comments")
+    public ResponseEntity<List<CommentResponse>> getComments(@PathVariable String id) {
+        return ResponseEntity.ok(eventService.getComments(id));
+    }
+
+    @PostMapping("/{id}/comments")
+    public ResponseEntity<CommentResponse> addComment(
+            @PathVariable String id,
+            @Valid @RequestBody CommentRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(eventService.addComment(id, request));
     }
 }

@@ -41,7 +41,16 @@ public class Event {
     @Builder.Default
     private List<String> partenaires = new ArrayList<>();
 
+    @Builder.Default
+    private List<String> partnerLogos = new ArrayList<>();
+
     private String affiche; // URL or path to poster image
+
+    @Builder.Default
+    private List<String> galleryPhotos = new ArrayList<>();
+
+    @Builder.Default
+    private List<EventComment> comments = new ArrayList<>();
 
     public int getPlacesRestantes() {
         return nombrePlaces - participants.size();

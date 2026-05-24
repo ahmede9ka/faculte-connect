@@ -1,4 +1,4 @@
-import type { Event, Notification, Project, ProjectMember, Recommendation, Task, User } from "./types";
+import type { Event, EventComment, Notification, Project, ProjectMember, Recommendation, Task, TaskComment, User } from "./types";
 
 const storage = {
   token: "auth_token",
@@ -37,6 +37,7 @@ type TacheRaw = {
   priorite?: unknown;
   // FIX: backend Tache has membresEmails (List<String>), not a single assignee
   membresEmails?: unknown;
+  comments?: unknown;
 };
 
 type UserRaw = {
@@ -50,7 +51,9 @@ type UserRaw = {
   competences?: unknown;
   avatar?: unknown;
   organizationType?: unknown;
+  partnerLogos?: unknown;
   responsableNom?: unknown;
+  galleryPhotos?: unknown;
   responsableEmail?: unknown;
   responsableTelephone?: unknown;
   sponsors?: unknown;
@@ -297,6 +300,18 @@ function mapTask(t: TacheRaw, projectId: string): Task {
     ? (t.membresEmails as unknown[]).map(asString)
     : [];
   const primaryAssignee = membresEmails[0] ?? "";
+  const comments: TaskComment[] = Array.isArray(t.comments)
+    ? (t.comments as unknown[]).map((c) => {
+        const comment = c as Record<string, unknown>;
+        return {
+          id: asString(comment.id),
+          authorName: asString(comment.authorName),
+          authorEmail: asString(comment.authorEmail),
+          message: asString(comment.message),
+          createdAt: asString(comment.createdAt),
+        };
+      })
+    : [];
 
   return {
     id: asString(t.id),
@@ -312,11 +327,21 @@ function mapTask(t: TacheRaw, projectId: string): Task {
     statut: mapTaskStatus(asString(t.status)),
     progression: asNumber(t.progression),
     commentaire: asString(t.commentaire),
+    comments,
     projectId,
     // Expose the full list for components that need it
     //membresEmails,
   };
 }
+
+export const fetchProjectMembers = async (projetId: string): Promise<string[]> => {
+  try {
+    const members = await apiJson<string[]>(`/projets/${encodeURIComponent(projetId)}/membres`);
+    return Array.isArray(members) ? members.map(asString) : [];
+  } catch {
+    return [];
+  }
+};
 
 export const fetchCurrentUser = async (): Promise<User | null> => {
   const email = getAuthEmail();
@@ -678,6 +703,51 @@ export const addTaskMembers = async (
   return mapProject(projetRaw);
 };
 
+export const replaceTaskMembers = async (
+  projetId: string,
+  tacheId: string,
+  emails: string[]
+): Promise<Project> => {
+  const projetRaw = await apiJson<ProjetRaw>(
+    `/projets/${encodeURIComponent(projetId)}/taches/${encodeURIComponent(tacheId)}/membres`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ emails }),
+    }
+  );
+  return mapProject(projetRaw);
+};
+
+export const fetchTaskComments = async (
+  projetId: string,
+  tacheId: string
+): Promise<TaskComment[]> => {
+  try {
+    const comments = await apiJson<TaskComment[]>(
+      `/projets/${encodeURIComponent(projetId)}/taches/${encodeURIComponent(tacheId)}/commentaires`
+    );
+    return Array.isArray(comments) ? comments : [];
+  } catch {
+    return [];
+  }
+};
+
+export const addTaskComment = async (
+  projetId: string,
+  tacheId: string,
+  payload: { authorName: string; authorEmail: string; message: string }
+): Promise<TaskComment> => {
+  return apiJson<TaskComment>(
+    `/projets/${encodeURIComponent(projetId)}/taches/${encodeURIComponent(tacheId)}/commentaires`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }
+  );
+};
+
 // FIX: expose updateTache so the UI can update tasks via PUT /projets/{id}/taches/{tacheId}.
 export const updateTask = async (
   projetId: string,
@@ -759,8 +829,14 @@ function mapEvent(e: EventRaw): Event {
     partenaires: Array.isArray(e.partenaires)
       ? (e.partenaires as unknown[]).map(asString)
       : [],
+    partnerLogos: Array.isArray(e.partnerLogos)
+      ? (e.partnerLogos as unknown[]).map(asString)
+      : [],
     participants: Array.isArray(e.participants)
       ? (e.participants as unknown[]).map(asString)
+      : [],
+    galleryPhotos: Array.isArray(e.galleryPhotos)
+      ? (e.galleryPhotos as unknown[]).map(asString)
       : [],
   };
 }
@@ -793,7 +869,9 @@ export const createEvent = async (eventData: {
   lieu: string;
   nombrePlaces: number;
   partenaires?: string[];
+  partnerLogos?: string[];
   affiche?: string;
+  galleryPhotos?: string[];
 }): Promise<Event> => {
   const eventRaw = await apiJson<EventRaw>(`/events`, {
     method: "POST",
@@ -815,7 +893,9 @@ export const updateEvent = async (
     lieu: string;
     nombrePlaces: number;
     partenaires?: string[];
+    partnerLogos?: string[];
     affiche?: string;
+    galleryPhotos?: string[];
   }
 ): Promise<Event> => {
   const eventRaw = await apiJson<EventRaw>(`/events/${encodeURIComponent(id)}`, {
@@ -877,6 +957,56 @@ export const fetchEventsByOrganizer = async (): Promise<Event[]> => {
   } catch {
     return [];
   }
+};
+
+// ==================== EVENT COMMENTS ====================
+
+type EventCommentRaw = {
+  id?: unknown;
+  authorName?: unknown;
+  authorEmail?: unknown;
+  message?: unknown;
+  createdAt?: unknown;
+};
+
+function mapEventComment(comment: EventCommentRaw): EventComment {
+  return {
+    id: asString(comment.id),
+    authorName: asString(comment.authorName),
+    authorEmail: asString(comment.authorEmail),
+    message: asString(comment.message),
+    createdAt: asString(comment.createdAt),
+  };
+}
+
+export const fetchEventComments = async (eventId: string): Promise<EventComment[]> => {
+  try {
+    const commentsRaw = await apiJson<EventCommentRaw[]>(
+      `/events/${encodeURIComponent(eventId)}/comments`
+    );
+    return commentsRaw.map(mapEventComment);
+  } catch {
+    return [];
+  }
+};
+
+export const addEventComment = async (
+  eventId: string,
+  payload: {
+    authorName: string;
+    authorEmail: string;
+    message: string;
+  }
+): Promise<EventComment> => {
+  const commentRaw = await apiJson<EventCommentRaw>(
+    `/events/${encodeURIComponent(eventId)}/comments`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }
+  );
+  return mapEventComment(commentRaw);
 };
 
 // ==================== NOTIFICATION ENDPOINTS ====================

@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import tn.fst.projectservice.client.AuthServiceClient;
 import tn.fst.projectservice.dto.ApprobationRequest;
 import tn.fst.projectservice.dto.ProjetRequest;
+import tn.fst.projectservice.dto.TacheCommentRequest;
 import tn.fst.projectservice.dto.TacheRequest;
 import tn.fst.projectservice.dto.TacheAssigneeEvent;
 import tn.fst.projectservice.dto.TacheUpdateEvent;
@@ -12,6 +13,7 @@ import tn.fst.projectservice.entity.*;
 import tn.fst.projectservice.kafka.TacheEventProducer;
 import tn.fst.projectservice.repository.ProjetRepository;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -291,9 +293,10 @@ public class ProjetService {
                 .status(request.getStatus() != null ? request.getStatus() : StatusProjet.EN_ATTENTE)
                 .echeance(request.getEcheance())
                 .progression(request.getProgression())
-            .priorite(request.getPriorite())
+                .priorite(request.getPriorite())
                 .commentaire(request.getCommentaire() != null ? request.getCommentaire() : "")
                 .membresEmails(validatedMembers)
+                .comments(new ArrayList<>())
                 .build();
 
         projet.getTaches().add(tache);
@@ -488,6 +491,34 @@ public class ProjetService {
         }
 
         return projetRepository.save(projet);
+    }
+
+    public List<TacheComment> getTaskComments(String projetId, String tacheId) {
+        Tache tache = getTaskOrThrow(projetId, tacheId);
+        if (tache.getComments() == null) {
+            return new ArrayList<>();
+        }
+        return tache.getComments();
+    }
+
+    public TacheComment addTaskComment(String projetId, String tacheId, TacheCommentRequest request) {
+        Projet projet = getById(projetId);
+        Tache tache = getTaskOrThrow(projet, tacheId);
+        if (tache.getComments() == null) {
+            tache.setComments(new ArrayList<>());
+        }
+
+        TacheComment comment = TacheComment.builder()
+                .id(UUID.randomUUID().toString())
+                .authorName(request.getAuthorName())
+                .authorEmail(request.getAuthorEmail())
+                .message(request.getMessage())
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        tache.getComments().add(comment);
+        projetRepository.save(projet);
+        return comment;
     }
 
     private void ensureProjectCollections(Projet projet) {

@@ -8,12 +8,14 @@ import org.springframework.web.bind.annotation.*;
 import tn.fst.projectservice.dto.AddMemberRequest;
 import tn.fst.projectservice.dto.ApprobationRequest;
 import tn.fst.projectservice.dto.ProjetRequest;
+import tn.fst.projectservice.dto.TacheCommentRequest;
 import tn.fst.projectservice.dto.TacheRequest;
 import tn.fst.projectservice.dto.TaskMembersRequest;
 import tn.fst.projectservice.dto.UpdateMemberRequest;
 import tn.fst.projectservice.entity.Projet;
 import tn.fst.projectservice.entity.StatusApprobation;
 import tn.fst.projectservice.entity.StatusProjet;
+import tn.fst.projectservice.entity.TacheComment;
 import tn.fst.projectservice.entity.Tache;
 import tn.fst.projectservice.entity.VisibiliteProjet;
 import tn.fst.projectservice.service.ProjetService;
@@ -180,6 +182,20 @@ public class ProjetController {
     public void deleteTache(@PathVariable String projetId,
             @PathVariable String tacheId) {
         projetService.deleteTache(projetId, tacheId);
+    }
+
+    @GetMapping("/{projetId}/taches/{tacheId}/commentaires")
+    public ResponseEntity<List<TacheComment>> getTaskComments(@PathVariable String projetId,
+            @PathVariable String tacheId) {
+        return ResponseEntity.ok(projetService.getTaskComments(projetId, tacheId));
+    }
+
+    @PostMapping("/{projetId}/taches/{tacheId}/commentaires")
+    public ResponseEntity<TacheComment> addTaskComment(@PathVariable String projetId,
+            @PathVariable String tacheId,
+            @Valid @RequestBody TacheCommentRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(projetService.addTaskComment(projetId, tacheId, request));
     }
 
     @GetMapping("/{projetId}/taches/membre/{email}")

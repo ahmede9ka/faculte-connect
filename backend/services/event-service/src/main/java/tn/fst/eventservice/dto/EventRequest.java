@@ -42,5 +42,9 @@ public class EventRequest {
 
     private List<String> partenaires;
 
+    private List<String> partnerLogos;
+
     private String affiche;
+
+    private List<String> galleryPhotos;
 }

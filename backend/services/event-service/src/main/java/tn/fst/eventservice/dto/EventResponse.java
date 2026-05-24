@@ -25,5 +25,7 @@ public class EventResponse {
     private int placesRestantes;
     private List<String> participants;
     private List<String> partenaires;
+    private List<String> partnerLogos;
     private String affiche;
+    private List<String> galleryPhotos;
 }

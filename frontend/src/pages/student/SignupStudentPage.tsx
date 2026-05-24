@@ -11,6 +11,7 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchCompetences, fetchFacultes, fetchSpecialites } from '@/lib/api';
 
 export default function SignupStudentPage() {
+  const FST_LOGO_URL = 'https://upload.wikimedia.org/wikipedia/fr/8/8d/FSTLOGO.svg';
   const [competences, setCompetences] = useState<string[]>([]);
   const { signUpStudent } = useAuth();
   const navigate = useNavigate();
@@ -70,10 +71,10 @@ export default function SignupStudentPage() {
     <div className="min-h-screen flex items-center justify-center p-6 bg-background">
       <div className="w-full max-w-lg space-y-6">
         <Link to="/" className="inline-flex items-center gap-2">
-          <div className="h-9 w-9 rounded-lg gradient-primary flex items-center justify-center">
-            <GraduationCap className="h-5 w-5 text-primary-foreground" />
+          <div className="h-9 w-9 rounded-lg bg-white border border-border flex items-center justify-center p-1">
+            <img src={FST_LOGO_URL} alt="FST" className="h-full w-full object-contain" />
           </div>
-          <span className="font-display font-bold">FST Projects</span>
+          <span className="font-display font-bold">FSTEAM</span>
         </Link>
         <div>
           <h1 className="font-display text-2xl font-bold">Inscription étudiant</h1>

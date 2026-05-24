@@ -44,6 +44,7 @@ const adminNav = [
 ];
 
 const ROLE_KEY = 'active_role';
+const FST_LOGO_URL = 'https://upload.wikimedia.org/wikipedia/fr/8/8d/FSTLOGO.svg';
 
 function roleFromPath(pathname: string): UserRole {
   if (pathname.startsWith('/dashboard/admin') || pathname.startsWith('/admin/')) {
@@ -82,17 +83,17 @@ export function AppSidebar() {
         <div className="p-4 border-b border-sidebar-border">
           {!collapsed ? (
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg gradient-primary flex items-center justify-center">
-                <GraduationCap className="h-5 w-5 text-primary-foreground" />
+              <div className="h-10 w-10 rounded-lg bg-white flex items-center justify-center border border-sidebar-border p-1">
+                <img src={FST_LOGO_URL} alt="FST" className="h-full w-full object-contain" />
               </div>
               <div>
-                <h2 className="font-display font-bold text-sm text-sidebar-foreground">FST Projects</h2>
-                <p className="text-xs text-sidebar-foreground/60">Faculté des Sciences</p>
+                <h2 className="font-display font-bold text-sm text-sidebar-foreground">FSTEAM</h2>
+                <p className="text-xs text-sidebar-foreground/60">Faculte des Sciences</p>
               </div>
             </div>
           ) : (
-            <div className="h-10 w-10 rounded-lg gradient-primary flex items-center justify-center mx-auto">
-              <GraduationCap className="h-5 w-5 text-primary-foreground" />
+            <div className="h-10 w-10 rounded-lg bg-white flex items-center justify-center mx-auto border border-sidebar-border p-1">
+              <img src={FST_LOGO_URL} alt="FST" className="h-full w-full object-contain" />
             </div>
           )}
         </div>

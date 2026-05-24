@@ -46,9 +46,9 @@ export default function AdminOrganizationsPage() {
   );
 
   const typeColor = (type?: string) => {
-    if (type === 'Club') return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
-    if (type === 'Association') return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400';
-    if (type === 'Département') return 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400';
+    if (type === 'Club') return 'bg-primary/10 text-primary';
+    if (type === 'Association') return 'bg-secondary/15 text-secondary-foreground';
+    if (type === 'Département') return 'bg-accent/15 text-accent-foreground';
     return '';
   };
 
@@ -82,9 +82,9 @@ export default function AdminOrganizationsPage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
             { label: 'Total organisations', value: orgs.length, color: 'text-secondary' },
-            { label: 'Clubs', value: orgs.filter(o => o.organizationType === 'Club').length, color: 'text-blue-600' },
-            { label: 'Associations', value: orgs.filter(o => o.organizationType === 'Association').length, color: 'text-emerald-600' },
-            { label: 'Départements', value: orgs.filter(o => o.organizationType === 'Département').length, color: 'text-purple-600' },
+            { label: 'Clubs', value: orgs.filter(o => o.organizationType === 'Club').length, color: 'text-primary' },
+            { label: 'Associations', value: orgs.filter(o => o.organizationType === 'Association').length, color: 'text-secondary' },
+            { label: 'Départements', value: orgs.filter(o => o.organizationType === 'Département').length, color: 'text-accent' },
           ].map((stat, i) => (
             <div key={i} className="bg-card rounded-xl border p-4 text-center">
               <p className={`text-2xl font-display font-bold ${stat.color}`}>{stat.value}</p>

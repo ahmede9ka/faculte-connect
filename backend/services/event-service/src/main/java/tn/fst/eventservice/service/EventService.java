@@ -3,15 +3,19 @@ package tn.fst.eventservice.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import tn.fst.eventservice.kafka.EventParticipationProducer;
+import tn.fst.eventservice.dto.CommentRequest;
+import tn.fst.eventservice.dto.CommentResponse;
 import tn.fst.eventservice.dto.EventRequest;
 import tn.fst.eventservice.dto.EventResponse;
 import tn.fst.eventservice.dto.EventParticipationEvent;
 import tn.fst.eventservice.entity.Event;
+import tn.fst.eventservice.entity.EventComment;
 import tn.fst.eventservice.repository.EventRepository;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -32,7 +36,9 @@ public class EventService {
                 .nombrePlaces(request.getNombrePlaces())
                 .participants(new ArrayList<>())
                 .partenaires(request.getPartenaires() != null ? request.getPartenaires() : new ArrayList<>())
+                .partnerLogos(request.getPartnerLogos() != null ? request.getPartnerLogos() : new ArrayList<>())
                 .affiche(request.getAffiche())
+                .galleryPhotos(request.getGalleryPhotos() != null ? request.getGalleryPhotos() : new ArrayList<>())
                 .build();
 
         Event saved = eventRepository.save(event);
@@ -76,8 +82,18 @@ public class EventService {
         event.setDateHeure(request.getDateHeure());
         event.setLieu(request.getLieu());
         event.setNombrePlaces(request.getNombrePlaces());
-        event.setPartenaires(request.getPartenaires());
-        event.setAffiche(request.getAffiche());
+        if (request.getPartenaires() != null) {
+            event.setPartenaires(request.getPartenaires());
+        }
+        if (request.getPartnerLogos() != null) {
+            event.setPartnerLogos(request.getPartnerLogos());
+        }
+        if (request.getAffiche() != null) {
+            event.setAffiche(request.getAffiche());
+        }
+        if (request.getGalleryPhotos() != null) {
+            event.setGalleryPhotos(request.getGalleryPhotos());
+        }
 
         Event updated = eventRepository.save(event);
         return toResponse(updated);
@@ -137,6 +153,38 @@ public class EventService {
                 .collect(Collectors.toList());
     }
 
+    public List<CommentResponse> getComments(String eventId) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new RuntimeException("Événement non trouvé avec l'id: " + eventId));
+        return event.getComments()
+                .stream()
+                .map(this::toCommentResponse)
+                .collect(Collectors.toList());
+    }
+
+    public CommentResponse addComment(String eventId, CommentRequest request) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new RuntimeException("Événement non trouvé avec l'id: " + eventId));
+
+        List<EventComment> comments = event.getComments() != null
+                ? event.getComments()
+                : new ArrayList<>();
+
+        EventComment comment = EventComment.builder()
+                .id(UUID.randomUUID().toString())
+                .authorName(request.getAuthorName())
+                .authorEmail(request.getAuthorEmail())
+                .message(request.getMessage())
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        comments.add(comment);
+        event.setComments(comments);
+        eventRepository.save(event);
+
+        return toCommentResponse(comment);
+    }
+
     private EventResponse toResponse(Event event) {
         return EventResponse.builder()
                 .id(event.getId())
@@ -150,7 +198,19 @@ public class EventService {
                 .placesRestantes(event.getPlacesRestantes())
                 .participants(event.getParticipants())
                 .partenaires(event.getPartenaires())
+                .partnerLogos(event.getPartnerLogos())
                 .affiche(event.getAffiche())
+                .galleryPhotos(event.getGalleryPhotos())
+                .build();
+    }
+
+    private CommentResponse toCommentResponse(EventComment comment) {
+        return CommentResponse.builder()
+                .id(comment.getId())
+                .authorName(comment.getAuthorName())
+                .authorEmail(comment.getAuthorEmail())
+                .message(comment.getMessage())
+                .createdAt(comment.getCreatedAt())
                 .build();
     }
 }

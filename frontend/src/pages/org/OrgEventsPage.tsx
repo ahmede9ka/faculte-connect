@@ -7,13 +7,14 @@ import { Event } from '@/lib/types';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { CalendarDays, MapPin, Plus, Users } from 'lucide-react';
+import { CalendarDays, MapPin, Plus, Users, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { SmartImage } from '@/components/SmartImage';
 import { eventPhoto, imageCandidates } from '@/lib/images';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 function toInputDateTime(value: string) {
   const date = new Date(value);
@@ -25,6 +26,10 @@ export default function OrgEventsPage() {
   const queryClient = useQueryClient();
   const { userEmail } = useAuth();
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
+  const [search, setSearch] = useState('');
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [availabilityFilter, setAvailabilityFilter] = useState('all');
+  const [timeFilter, setTimeFilter] = useState('all');
   const [editForm, setEditForm] = useState({
     titre: '',
     description: '',
@@ -40,6 +45,29 @@ export default function OrgEventsPage() {
     queryKey: ['events', userEmail],
     queryFn: () => fetchEventsByOrganizer(),
     enabled: Boolean(userEmail),
+  });
+
+  const eventTypes = Array.from(new Set(events.map(e => e.type).filter(Boolean))).sort();
+  const searchValue = search.trim().toLowerCase();
+  const now = new Date();
+  const filteredEvents = events.filter(e => {
+    const matchesSearch = !searchValue || [
+      e.titre,
+      e.description,
+      e.type,
+      e.lieu,
+      e.organisateur,
+    ].some(value => (value || '').toLowerCase().includes(searchValue));
+    const matchesType = typeFilter === 'all' || e.type === typeFilter;
+    const isFull = e.placesRestantes === 0;
+    const matchesAvailability = availabilityFilter === 'all'
+      || (availabilityFilter === 'available' && !isFull)
+      || (availabilityFilter === 'full' && isFull);
+    const eventDate = new Date(e.dateHeure);
+    const matchesTime = timeFilter === 'all'
+      || (timeFilter === 'upcoming' && eventDate >= now)
+      || (timeFilter === 'past' && eventDate < now);
+    return matchesSearch && matchesType && matchesAvailability && matchesTime;
   });
 
   const deleteMutation = useMutation({
@@ -62,7 +90,9 @@ export default function OrgEventsPage() {
         lieu: form.lieu,
         nombrePlaces: Number(form.nombrePlaces) || 0,
         partenaires: form.partenaires.split(',').map(p => p.trim()).filter(Boolean),
+        partnerLogos: event.partnerLogos || [],
         affiche: form.affiche,
+        galleryPhotos: event.galleryPhotos || [],
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['events'] });
@@ -118,10 +148,47 @@ export default function OrgEventsPage() {
           ))}
         </div>
 
+        <div className="flex flex-wrap gap-3">
+          <div className="relative flex-1 min-w-[220px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Rechercher un événement..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="w-[180px]"><SelectValue placeholder="Type" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous les types</SelectItem>
+              {eventTypes.map(type => (
+                <SelectItem key={type} value={type}>{type}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={availabilityFilter} onValueChange={setAvailabilityFilter}>
+            <SelectTrigger className="w-[180px]"><SelectValue placeholder="Disponibilite" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Toutes</SelectItem>
+              <SelectItem value="available">Disponibles</SelectItem>
+              <SelectItem value="full">Complets</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={timeFilter} onValueChange={setTimeFilter}>
+            <SelectTrigger className="w-[180px]"><SelectValue placeholder="Periode" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Toutes les dates</SelectItem>
+              <SelectItem value="upcoming">A venir</SelectItem>
+              <SelectItem value="past">Passees</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
         <div className="bg-card rounded-xl border overflow-hidden">
           {isLoading ? (
             <div className="p-8 text-center text-muted-foreground">Chargement des événements...</div>
-          ) : events.length === 0 ? (
+          ) : filteredEvents.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">
               <CalendarDays className="h-10 w-10 mx-auto mb-3 opacity-30" />
               <p>Aucun événement créé</p>
@@ -141,7 +208,7 @@ export default function OrgEventsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {events.map(e => {
+                  {filteredEvents.map(e => {
                     const filled = e.nombrePlaces - e.placesRestantes;
                     const isFull = e.placesRestantes === 0;
                     return (
@@ -165,31 +232,9 @@ export default function OrgEventsPage() {
                         </td>
                         <td className="px-5 py-4">
                           <div className="flex items-center justify-end gap-1">
-                            <Dialog>
-                              <DialogTrigger asChild>
-                                <Button variant="ghost" size="sm">Voir</Button>
-                              </DialogTrigger>
-                              <DialogContent className="max-w-lg">
-                                <DialogHeader><DialogTitle>{e.titre}</DialogTitle></DialogHeader>
-                                <div className="space-y-3 text-sm">
-                                  <div className="h-40 overflow-hidden rounded-lg bg-muted">
-                                    <SmartImage sources={imageCandidates(e.affiche, eventPhoto(e.id || e.titre))} alt={e.titre} />
-                                  </div>
-                                  <p className="text-muted-foreground">{e.description || 'Aucune description'}</p>
-                                  <div className="grid grid-cols-2 gap-3">
-                                    <div><p className="text-xs text-muted-foreground">Date</p><p>{new Date(e.dateHeure).toLocaleString('fr-FR')}</p></div>
-                                    <div><p className="text-xs text-muted-foreground">Lieu</p><p>{e.lieu}</p></div>
-                                    <div><p className="text-xs text-muted-foreground">Type</p><p>{e.type}</p></div>
-                                    <div><p className="text-xs text-muted-foreground">Participants</p><p>{filled}/{e.nombrePlaces}</p></div>
-                                  </div>
-                                  {e.partenaires.length > 0 && (
-                                    <div className="flex flex-wrap gap-1">
-                                      {e.partenaires.map(p => <Badge key={p} variant="outline">{p}</Badge>)}
-                                    </div>
-                                  )}
-                                </div>
-                              </DialogContent>
-                            </Dialog>
+                            <Link to={`/events/${e.id}`}>
+                              <Button variant="ghost" size="sm">Voir</Button>
+                            </Link>
                             <Button variant="ghost" size="sm" onClick={() => openEdit(e)}>Modifier</Button>
                             <Button
                               variant="ghost"

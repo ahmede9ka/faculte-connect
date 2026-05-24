@@ -22,6 +22,37 @@ import {
 import { Button } from "@/components/ui/button";
 import { SmartImage } from "@/components/SmartImage";
 import { eventPhoto, imageCandidates, projectPhoto } from "@/lib/images";
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  LineChart,
+  Line,
+} from "recharts";
+
+const dayMs = 24 * 60 * 60 * 1000;
+
+function startOfWeek(date: Date) {
+  const d = new Date(date);
+  const day = (d.getDay() + 6) % 7;
+  d.setHours(0, 0, 0, 0);
+  d.setTime(d.getTime() - day * dayMs);
+  return d;
+}
+
+function addDays(date: Date, days: number) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d;
+}
+
+function formatWeekLabel(date: Date) {
+  return date.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
+}
 
 export default function StudentDashboardPage() {
   const { data: projects = [] } = useQuery<Project[]>({
@@ -43,6 +74,39 @@ export default function StudentDashboardPage() {
 
   const myProjects = projects;
   const myTasks = tasks;
+
+  const projectProgressData = myProjects
+    .slice()
+    .sort((a, b) => b.progression - a.progression)
+    .slice(0, 5)
+    .map((project) => ({
+      name: project.titre.length > 18 ? `${project.titre.slice(0, 18)}…` : project.titre,
+      progression: project.progression,
+      taches: project.taches?.length ?? 0,
+    }));
+
+  const now = new Date();
+  const weekStart = startOfWeek(now);
+  const weeks = Array.from({ length: 6 }, (_, index) => addDays(weekStart, index * 7));
+  const activityData = weeks.map((start) => ({
+    label: formatWeekLabel(start),
+    taches: 0,
+    evenements: 0,
+  }));
+
+  const addToBucket = (dateValue: string | undefined, key: "taches" | "evenements") => {
+    if (!dateValue) return;
+    const date = new Date(dateValue);
+    if (Number.isNaN(date.getTime())) return;
+    if (date < weekStart || date >= addDays(weekStart, weeks.length * 7)) return;
+    const diff = Math.floor((startOfWeek(date).getTime() - weekStart.getTime()) / (7 * dayMs));
+    if (diff >= 0 && diff < activityData.length) {
+      activityData[diff][key] += 1;
+    }
+  };
+
+  myTasks.forEach((task) => addToBucket(task.deadline, "taches"));
+  events.forEach((eventItem) => addToBucket(eventItem.dateHeure, "evenements"));
 
   return (
     <DashboardLayout>
@@ -72,6 +136,112 @@ export default function StudentDashboardPage() {
             value={recommendations.length}
             icon={<Lightbulb className="h-5 w-5" />}
           />
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <div className="bg-card rounded-xl border p-5 shadow-card relative overflow-hidden">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(37,99,235,0.08),transparent_55%)]" />
+            <div className="relative">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="font-display font-semibold text-lg">
+                    Progression des projets
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    Top 5 par avancement
+                  </p>
+                </div>
+                <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">
+                  Live
+                </span>
+              </div>
+              {projectProgressData.length === 0 ? (
+                <div className="h-56 flex items-center justify-center text-sm text-muted-foreground">
+                  Ajoutez des projets pour voir la progression.
+                </div>
+              ) : (
+                <div className="h-56">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={projectProgressData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                      <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />
+                      <Tooltip
+                        cursor={{ fill: "hsl(var(--muted))" }}
+                        contentStyle={{
+                          background: "hsl(var(--card))",
+                          borderRadius: 12,
+                          borderColor: "hsl(var(--border))",
+                          fontSize: 12,
+                        }}
+                        formatter={(value: number) => [`${value}%`, "Progression"]}
+                      />
+                      <Bar dataKey="progression" fill="hsl(var(--primary))" radius={[8, 8, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="bg-card rounded-xl border p-5 shadow-card relative overflow-hidden">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,hsl(var(--secondary)/0.18),transparent_55%)]" />
+            <div className="relative">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="font-display font-semibold text-lg">
+                    Activite a venir
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    Taches et evenements par semaine
+                  </p>
+                </div>
+                <span className="text-xs px-2 py-1 rounded-full bg-secondary/15 text-secondary-foreground">
+                  6 semaines
+                </span>
+              </div>
+              {activityData.every((item) => item.taches === 0 && item.evenements === 0) ? (
+                <div className="h-56 flex items-center justify-center text-sm text-muted-foreground">
+                  Aucun planning detecte sur les 6 prochaines semaines.
+                </div>
+              ) : (
+                <div className="h-56">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={activityData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                      <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                      <Tooltip
+                        cursor={{ stroke: "hsl(var(--muted-foreground))" }}
+                        contentStyle={{
+                          background: "hsl(var(--card))",
+                          borderRadius: 12,
+                          borderColor: "hsl(var(--border))",
+                          fontSize: 12,
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="taches"
+                        stroke="hsl(var(--primary))"
+                        strokeWidth={2.5}
+                        dot={{ r: 3 }}
+                        name="Taches"
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="evenements"
+                        stroke="hsl(var(--accent))"
+                        strokeWidth={2.5}
+                        dot={{ r: 3 }}
+                        name="Evenements"
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Projects */}

@@ -4,6 +4,7 @@ import lombok.*;
 import org.springframework.data.annotation.Id;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 @Getter
@@ -22,4 +23,6 @@ public class Tache {
     private String priorite;
     private String commentaire;
     private List<String> membresEmails; // multiple assigned members
+    @Builder.Default
+    private List<TacheComment> comments = new ArrayList<>();
 }

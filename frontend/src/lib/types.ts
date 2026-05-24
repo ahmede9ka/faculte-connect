@@ -75,7 +75,16 @@ export interface Task {
   statut: 'Non commencée' | 'En cours' | 'Terminée' | 'En retard';
   progression: number;
   commentaire?: string;
+  comments?: TaskComment[];
   projectId: string;
+}
+
+export interface TaskComment {
+  id: string;
+  authorName: string;
+  authorEmail: string;
+  message: string;
+  createdAt: string;
 }
 
 export interface Event {
@@ -90,8 +99,18 @@ export interface Event {
   affiche?: string;
   createurs: string[];
   partenaires: string[];
+  partnerLogos?: string[];
   participants: string[];
   organisateur?: string;
+  galleryPhotos?: string[];
+}
+
+export interface EventComment {
+  id: string;
+  authorName: string;
+  authorEmail: string;
+  message: string;
+  createdAt: string;
 }
 
 export interface Notification {
